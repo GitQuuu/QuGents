@@ -32,21 +32,18 @@ plugins/qugents/
 
 ## Installation
 
-I Claude Code (én gang pr. maskine):
+### Pr. projekt (følger med repoet)
 
-```
-/plugin marketplace add GitQuuu/QuGents
-/plugin install qugents@qugents
-```
-
-Eller fra en terminal:
+Kør i projektets rodmappe:
 
 ```bash
-claude plugin marketplace add GitQuuu/QuGents
-claude plugin install qugents@qugents
+claude plugin marketplace add GitQuuu/QuGents --scope project
+claude plugin install qugents@qugents --scope project
 ```
 
-Skal et projekt altid have QuGents (også i CI og for kollegaer), så læg det i projektets `.claude/settings.json`:
+Det skriver `.claude/settings.json`. Commit den, så får kollegaer og CI også QuGents, og andre projekter påvirkes ikke. Første gang en kollega åbner projektet, skal mappen godkendes som betroet, før pluginet hentes.
+
+Resultatet i `.claude/settings.json`:
 
 ```json
 {
@@ -57,9 +54,37 @@ Skal et projekt altid have QuGents (også i CI og for kollegaer), så læg det i
 }
 ```
 
+### Kun for dig i ét projekt
+
+Brug `--scope local` i stedet for `--scope project`. Så havner det i `.claude/settings.local.json`, som ikke committes.
+
+### På hele maskinen (alle projekter)
+
+```bash
+claude plugin marketplace add GitQuuu/QuGents
+claude plugin install qugents@qugents
+```
+
+Eller inde i Claude Code: `/plugin marketplace add GitQuuu/QuGents` og `/plugin install qugents@qugents`.
+
+### Fjern den maskin-globale installation
+
+```bash
+claude plugin uninstall qugents@qugents
+```
+
+Uden `--scope` rammer den den globale installation. Kør den, hvis QuGents kun skal være aktiv i de projekter, der selv slår den til. Fra et projekt fjernes den med `claude plugin uninstall qugents@qugents --scope project`.
+
 ## Opdatering
 
-`plugin.json` har bevidst ingen `version`. Claude Code bruger så commit-SHA som version, og alle får den nye udgave ved `/plugin update` eller auto-update. Når QuGents er stabilt, kan du skifte til semver (`"version": "1.0.0"`) og kun bumpe ved releases.
+Hent den nyeste udgave efter et push til QuGents (genstart Claude Code bagefter):
+
+```bash
+claude plugin marketplace update qugents
+claude plugin update qugents@qugents
+```
+
+`plugin.json` har bevidst ingen `version`. Claude Code bruger så commit-SHA som version, så hvert push er en ny udgave. Når QuGents er stabilt, kan du skifte til semver (`"version": "1.0.0"`) og kun bumpe ved releases.
 
 ## Tilføj en ny agent eller skill
 
