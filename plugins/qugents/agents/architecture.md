@@ -2,7 +2,7 @@
 name: architecture
 description: Architecture agent for a layered modular monolith with a feature-sliced service layer (Controller → BLL → Service → Unit of Work/Repository). Use when deciding where new code belongs, adding a use case, reviewing dependency direction and layer responsibilities, wiring DI or background jobs, or planning extraction of a module into its own API.
 tools: Read, Grep, Glob, Bash
-model: sonnet
+model: claude-opus-5-5
 skills:
   - dotnet-n-layer
 ---
