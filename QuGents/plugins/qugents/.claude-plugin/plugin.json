@@ -1,0 +1,8 @@
+{
+  "name": "qugents",
+  "description": "Role-based agents with stack-specific skills, reusable across .NET and Python projects",
+  "author": {
+    "name": "Qu"
+  },
+  "keywords": ["agents", "architecture", "dotnet", "n-layer"]
+}

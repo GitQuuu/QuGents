@@ -1,0 +1,14 @@
+{
+  "name": "qugents",
+  "description": "QuGents: role-based agents and stack skills (.NET, Python) reused across projects",
+  "owner": {
+    "name": "Qu"
+  },
+  "plugins": [
+    {
+      "name": "qugents",
+      "source": "./plugins/qugents",
+      "description": "Role agents (architecture, ...) and stack skills (dotnet-n-layer, ...)"
+    }
+  ]
+}
