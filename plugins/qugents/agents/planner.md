@@ -59,4 +59,5 @@ When asked to produce issues for the GitHub agent flow, output one task per bloc
 - Plan only what was asked. Note related improvements under a separate **Later** heading, never inside tasks.
 - Prefer extending existing modules over new ones; say why if a new module is needed.
 - Every task names concrete paths, interfaces and endpoints. "Update the backend" is not a task.
+- The backend part of a task is always an API endpoint (method, route, DTOs, status codes). Screens belong in the Angular part, never in server-rendered views.
 - If the goal is already partly implemented, say what exists and plan only the gap.

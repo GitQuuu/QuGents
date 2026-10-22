@@ -7,6 +7,17 @@ description: Conventions for ASP.NET Core N-layer modular monoliths (API → Ser
 
 Names here (`ServiceResult<T>`, `ResponseService`, `IUnitOfWork`, `I<Name>Bll`...) are conventions of this architecture. If the codebase already has its own version, use that one and follow its shape. If the code has drifted from this description, trust the code and say so.
 
+## The backend is always a Web API
+
+The backend is a JSON Web API and nothing else. All UI lives in the separate Angular app.
+
+- `<App>.Api` is an ASP.NET Core Web API: controllers with `[ApiController]` that inherit `ControllerBase` (not `Controller`) and return DTOs or `ProblemDetails` as JSON through `ResponseService`.
+- **No server-rendered UI:** no MVC views (`View()`, `.cshtml`), Razor Pages, Blazor, `ViewBag`/`TempData`, or HTML responses. If a task asks for a screen, the backend part is an endpoint and the screen is built in Angular.
+- Controllers, not Minimal APIs, so the thin-controller and slice structure holds (unless the project already uses Minimal APIs consistently).
+- Every endpoint is versioned (`api/v{version}/...`) and described in OpenAPI/Swagger through `[ProducesResponseType]`.
+- Stateless: JWT bearer authentication, no server-side session state. CORS is an explicit allow-list for the Angular app's origins.
+- The API knows nothing about the frontend: no Angular paths, no UI wording in responses beyond `ProblemDetails` titles.
+
 ## Projects and dependency direction
 
 ```
@@ -19,6 +30,8 @@ Names here (`ServiceResult<T>`, `ResponseService`, `IUnitOfWork`, `I<Name>Bll`..
 <App>.DataAccess    DbContext, entities, repositories, Unit of Work
 <App>.Packages      optional: central NuGet references (or Directory.Packages.props)
 <App>.Tests         mirrors the Services modules
+
+web/ (or <App>.Web) Angular app: separate project, talks to <App>.Api over HTTP only
 ```
 
 Call chain: `Controller → I<Name>Bll → I<Name>Service → IUnitOfWork → repository → DbContext`.
@@ -33,6 +46,7 @@ Call chain: `Controller → I<Name>Bll → I<Name>Service → IUnitOfWork → re
 6. Services stage changes. The BLL commits once with `IUnitOfWork.SaveChangesAsync()` and then invalidates the cache.
 7. Entities never leave the Services layer. Controllers return DTOs.
 8. Every new BLL, Service, repository or job is registered in the layer's `IServiceCollection` extension. It does not work until it is.
+9. The backend serves JSON only. No MVC views, Razor Pages, Blazor or HTML responses; UI belongs in the Angular app.
 
 ## Thin controllers
 

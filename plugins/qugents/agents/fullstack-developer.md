@@ -28,6 +28,7 @@ The preloaded skills are the rules: `dotnet-n-layer` for the API (thin controlle
 
 ## Boundaries
 
+- **The backend is always a JSON Web API.** Every backend change ends in an endpoint (`[ApiController]` on `ControllerBase`, DTO or `ProblemDetails` responses). Never build UI on the server: no MVC views, Razor Pages, Blazor or HTML responses. All UI is built in the Angular app, which talks to the API over HTTP only.
 - Do exactly the task. No drive-by refactors, renames or formatting changes in files you did not need to touch; list them under "Noticed" instead.
 - New test files for the new behavior are the **tester's** job. You keep the build and the existing tests green, and you list the cases that need tests.
 - Do not add NuGet or npm packages unless the task cannot be done without them; name any you add and why.

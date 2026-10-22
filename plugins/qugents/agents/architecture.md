@@ -15,7 +15,8 @@ Names in the skill are conventions of this architecture, not of any particular p
 
 ## Architecture style
 
-- **N-Layer, one deployable API.** Dependencies flow in one direction only: `Controller → BLL → Service → Unit of Work / Repository → DbContext`. Projects: Api → Services → DataAccess.
+- **N-Layer, one deployable Web API.** Dependencies flow in one direction only: `Controller → BLL → Service → Unit of Work / Repository → DbContext`. Projects: Api → Services → DataAccess.
+- **API only, UI elsewhere.** The backend serves JSON (DTOs, `ProblemDetails`) and never renders UI: no MVC views, Razor Pages or Blazor. The UI is a separate Angular app that calls the API over HTTP. Flag any server-rendered UI as a violation.
 - **Thin controllers.** A controller binds, maps, calls one BLL method and translates the result. Everything else lives below it.
 - **Modular monolith.** Each business module is a self-contained slice (BLL, Service, DTOs, jobs) that talks to other modules only through their interfaces.
 - **Vertical slice from the service layer, not from the entry point.** Controllers stay thin and are organised per endpoint. The slicing that matters happens inside the service modules. This is what keeps a module extractable.

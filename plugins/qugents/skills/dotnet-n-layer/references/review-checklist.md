@@ -8,6 +8,7 @@ Check in this order. Report each finding as `path:line`, the rule it breaks, and
 - [ ] `<App>.Services.csproj` has no `ProjectReference` to Api, and no `using` of Api namespaces.
 - [ ] No layer is skipped: Api never uses `IUnitOfWork`, repositories or `DbContext`.
 - [ ] Modules talk through `I<Other>Bll`/`I<Other>Service` only, never another module's repository or internals.
+- [ ] API only: controllers are `[ApiController]` + `ControllerBase`; no `View()`, `.cshtml`, Razor Pages, Blazor or HTML responses.
 
 Quick checks:
 
@@ -15,6 +16,7 @@ Quick checks:
 grep -rn --include=*.csproj "ProjectReference" .
 grep -rn "IUnitOfWork\|DbContext\|Repository" --include=*.cs <App>.Api/Controllers
 grep -rn "Microsoft.AspNetCore.Mvc\|IActionResult\|ControllerBase\|HttpContext" --include=*.cs <App>.Services
+grep -rln --include=*.cs ": Controller\b\|View(\|RazorPages\|AddControllersWithViews" . ; find . -name "*.cshtml" -o -name "*.razor"
 ```
 
 ## 2. Thin controllers
