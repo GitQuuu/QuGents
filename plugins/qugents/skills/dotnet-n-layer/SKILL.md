@@ -123,7 +123,7 @@ Each use case is a folder named after the operation. The class is split with `pa
 5. Write the thin action with HTTP conventions (below).
 6. If a new status code appears, add the case to `ResponseService` and a unit test for it.
 7. Register anything new in the DI extension method.
-8. Add `<Operation>Tests.cs` in the test project: mock `IUnitOfWork`/services, or use EF InMemory.
+8. Add `<Operation>Tests.cs` in the test project following the `dotnet-testing` skill (NUnit, AAA, FakeItEasy).
 
 ## HTTP conventions
 

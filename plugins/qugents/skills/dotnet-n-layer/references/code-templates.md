@@ -2,7 +2,7 @@
 
 Skeletons for one module (`Products`) and one use case (`EditProductAsync`). Replace names, keep the shape. If the codebase already defines a type shown here, use the existing one.
 
-Packages assumed: `Asp.Versioning.Mvc`, `Mapster`, `Microsoft.EntityFrameworkCore`, `Hangfire.Core`, `Sentry`, `xunit`, `Moq`.
+Packages assumed: `Asp.Versioning.Mvc`, `Mapster`, `Microsoft.EntityFrameworkCore`, `Hangfire.Core`, `Sentry`, `NUnit`, `FakeItEasy`.
 
 ## Contents
 
@@ -436,59 +436,37 @@ public sealed class ProcessProductImagesJob(IProductBll productBll, IBlobStorage
 
 ## 9. Tests
 
-`<App>.Tests/Modules/Products/EditProductAsyncTests.cs`
+Tests follow the `dotnet-testing` skill: NUnit 4, Arrange-Act-Assert, FakeItEasy, one fixture per operation in `<App>.Tests/Modules/<Name>/`. Full fixtures for Service, BLL, `ResponseService`, jobs and repositories are in that skill's `references/test-templates.md`. The minimum for a new use case:
 
 ```csharp
-using System.Net;
-using Moq;
-using Xunit;
-
+[TestFixture]
 public sealed class EditProductAsyncTests
 {
-    private readonly Mock<IUnitOfWork> _uow = new();
-    private readonly Mock<IProductRepository> _products = new();
+    private IUnitOfWork _uow = null!;
+    private IProductService _service = null!;
+    private ProductBll _sut = null!;
 
-    public EditProductAsyncTests() => _uow.Setup(u => u.Products).Returns(_products.Object);
-
-    [Fact]
-    public async Task Returns_NotFound_when_product_does_not_exist()
+    [SetUp] // NUnit shares one fixture instance across tests: create fakes here, not in field initializers
+    public void SetUp()
     {
-        _products.Setup(r => r.GetByIdAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
-                 .ReturnsAsync((Product?)null);
-        var sut = new ProductService(_uow.Object);
-
-        var result = await sut.EditProductAsync(new EditProductDto(Guid.NewGuid(), "x", 1), "user-1", CancellationToken.None);
-
-        Assert.False(result.Success);
-        Assert.Equal(HttpStatusCode.NotFound, result.StatusCode);
+        _uow = A.Fake<IUnitOfWork>();
+        _service = A.Fake<IProductService>();
+        _sut = new ProductBll(_uow, _service, A.Fake<ICacheService>());
     }
 
-    [Fact]
-    public async Task Bll_does_not_commit_when_service_fails()
+    [Test]
+    public async Task ServiceFails_DoesNotCommit()
     {
-        var service = new Mock<IProductService>();
-        service.Setup(s => s.EditProductAsync(It.IsAny<EditProductDto>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-               .ReturnsAsync(ServiceResult<ProductDto>.Fail(HttpStatusCode.Forbidden, "Not allowed."));
-        var sut = new ProductBll(_uow.Object, service.Object, Mock.Of<ICacheService>());
+        // Arrange
+        A.CallTo(() => _service.EditProductAsync(A<EditProductDto>._, A<string>._, A<CancellationToken>._))
+            .Returns(ServiceResult<ProductDto>.Fail(HttpStatusCode.Forbidden, "Not allowed."));
 
-        await sut.EditProductAsync(new EditProductDto(Guid.NewGuid(), "x", 1), "user-1", CancellationToken.None);
+        // Act
+        await _sut.EditProductAsync(new EditProductDto(Guid.NewGuid(), "x", 1), "user-1", CancellationToken.None);
 
-        _uow.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+        // Assert
+        A.CallTo(() => _uow.SaveChangesAsync(A<CancellationToken>._)).MustNotHaveHappened();
     }
-}
-```
-
-`ResponseService`: one test per status-code case.
-
-```csharp
-[Theory]
-[InlineData(HttpStatusCode.NotFound, typeof(NotFoundObjectResult))]
-[InlineData(HttpStatusCode.Forbidden, typeof(ForbidResult))]
-[InlineData(HttpStatusCode.Conflict, typeof(ConflictObjectResult))]
-public void Maps_status_code_to_action_result(HttpStatusCode status, Type expected)
-{
-    var result = new ResponseService().ToActionResult(ServiceResult<object>.Fail(status, "x"));
-    Assert.IsType(expected, result);
 }
 ```
 

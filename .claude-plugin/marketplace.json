@@ -8,7 +8,7 @@
     {
       "name": "qugents",
       "source": "./plugins/qugents",
-      "description": "Role agents (architecture, ...) and stack skills (dotnet-n-layer, ...)"
+      "description": "Role agents (planner, architecture, fullstack-developer, tester, reviewer) and stack skills (.NET N-layer, NUnit testing, Angular, secure code review)"
     }
   ]
 }
