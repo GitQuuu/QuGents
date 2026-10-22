@@ -60,4 +60,5 @@ When asked to produce issues for the GitHub agent flow, output one task per bloc
 - Prefer extending existing modules over new ones; say why if a new module is needed.
 - Every task names concrete paths, interfaces and endpoints. "Update the backend" is not a task.
 - The backend part of a task is always an API endpoint (method, route, DTOs, status codes). Screens belong in the Angular part, never in server-rendered views.
+- Every task states who may call the endpoint (anonymous, any signed-in user, a role, or the owner). Auth follows the `dotnet-identity-jwt` skill (Identity + JWT); load it when the goal touches login, roles or permissions. For a brand-new project, make the first task "bootstrap the solution" per the `dotnet-new-solution` skill.
 - If the goal is already partly implemented, say what exists and plan only the gap.

@@ -6,7 +6,7 @@ Skeletons for one feature (`products`) talking to the .NET API from the `dotnet-
 
 1. App config, styles and environment (PrimeNG + Tailwind)
 2. ProblemDetails → `ApiError` (error interceptor)
-3. Auth interceptor and role guard
+3. Auth: store, interceptor, guard, session restore
 4. DTO types
 5. API service
 6. Feature routes
@@ -152,7 +152,88 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) =>
   );
 ```
 
-## 3. Auth interceptor and role guard
+## 3. Auth: store, interceptor, guard, session restore
+
+Matches the `dotnet-identity-jwt` skill: access token in the JSON body (kept in memory only), refresh token in an HttpOnly cookie on `/api/v1/auth`, so auth calls use `withCredentials: true`.
+
+`src/app/core/auth/auth-store.ts`
+
+```ts
+import { HttpClient } from '@angular/common/http';
+import { Injectable, computed, inject, signal } from '@angular/core';
+import { Observable, catchError, finalize, map, shareReplay, throwError } from 'rxjs';
+import { apiUrl } from '../http/api-url';
+
+interface AccessTokenResponse {
+  accessToken: string;
+  expiresAt: string;
+}
+
+@Injectable({ providedIn: 'root' })
+export class AuthStore {
+  private readonly http = inject(HttpClient);
+  private readonly token = signal<string | null>(null);
+  private refreshInFlight: Observable<string> | null = null;
+
+  readonly accessToken = this.token.asReadonly();
+  readonly isLoggedIn = computed(() => this.token() !== null);
+  private readonly claims = computed(() => decodeClaims(this.token()));
+  readonly userId = computed(() => (this.claims()?.['sub'] as string | undefined) ?? null);
+  readonly roles = computed(() => toArray(this.claims()?.['role']));
+
+  hasRole(role: string): boolean {
+    return this.roles().includes(role);
+  }
+
+  login(email: string, password: string): Observable<void> {
+    return this.http
+      .post<AccessTokenResponse>(apiUrl('auth/login'), { email, password }, { withCredentials: true })
+      .pipe(map((r) => this.token.set(r.accessToken)));
+  }
+
+  /** One shared request, even when many calls get a 401 at the same time. */
+  refresh(): Observable<string> {
+    this.refreshInFlight ??= this.http
+      .post<AccessTokenResponse>(apiUrl('auth/refresh'), null, { withCredentials: true })
+      .pipe(
+        map((r) => {
+          this.token.set(r.accessToken);
+          return r.accessToken;
+        }),
+        catchError((err: unknown) => {
+          this.token.set(null);
+          return throwError(() => err);
+        }),
+        finalize(() => (this.refreshInFlight = null)),
+        shareReplay(1),
+      );
+    return this.refreshInFlight;
+  }
+
+  logout(): Observable<void> {
+    return this.http
+      .post<void>(apiUrl('auth/logout'), null, { withCredentials: true })
+      .pipe(finalize(() => this.token.set(null)));
+  }
+}
+
+function decodeClaims(token: string | null): Record<string, unknown> | null {
+  if (!token) return null;
+  try {
+    const payload = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    return JSON.parse(atob(payload)) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+function toArray(value: unknown): string[] {
+  if (Array.isArray(value)) return value.map(String);
+  return typeof value === 'string' ? [value] : [];
+}
+```
+
+Decoding the token is for UX (show/hide by role). The API validates the signature and enforces roles.
 
 `src/app/core/auth/auth-interceptor.ts`
 
@@ -167,17 +248,27 @@ const withToken = (req: HttpRequest<unknown>, token: string | null) =>
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const auth = inject(AuthStore);
+  const isAuthCall = req.url.includes('/auth/'); // login/refresh/logout: never retry with a refresh
   return next(withToken(req, auth.accessToken())).pipe(
     catchError((err: unknown) => {
-      const isRefreshCall = req.url.includes('/auth/refresh');
-      if (err instanceof HttpErrorResponse && err.status === 401 && !isRefreshCall) {
-        // AuthStore.refresh() shares one in-flight refresh between concurrent requests.
+      if (err instanceof HttpErrorResponse && err.status === 401 && !isAuthCall) {
         return auth.refresh().pipe(switchMap((token) => next(withToken(req, token))));
       }
       return throwError(() => err);
     }),
   );
 };
+```
+
+Restore the session on page load (the access token lives only in memory). In `app.config.ts` providers:
+
+```ts
+import { inject, provideAppInitializer } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
+import { AuthStore } from './core/auth/auth-store';
+
+// inside providers: [...]
+provideAppInitializer(() => firstValueFrom(inject(AuthStore).refresh()).catch(() => undefined)),
 ```
 
 `src/app/core/auth/auth-guard.ts`
@@ -187,11 +278,70 @@ import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 import { AuthStore } from './auth-store';
 
-/** UX only. The API enforces roles again. */
+/** UX only. The API enforces authentication and roles again. */
+export const authGuard: CanActivateFn = () =>
+  inject(AuthStore).isLoggedIn() || inject(Router).createUrlTree(['/login']);
+
 export const roleGuard =
   (role: string): CanActivateFn =>
   () =>
     inject(AuthStore).hasRole(role) || inject(Router).createUrlTree(['/login']);
+```
+
+`src/app/core/auth/auth-store.spec.ts`
+
+```ts
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { firstValueFrom } from 'rxjs';
+import { AuthStore } from './auth-store';
+
+const tokenWith = (claims: object) => `x.${btoa(JSON.stringify(claims))}.y`;
+
+describe('AuthStore', () => {
+  let store: AuthStore;
+  let http: HttpTestingController;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
+    store = TestBed.inject(AuthStore);
+    http = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => http.verify());
+
+  it('shares one refresh request between concurrent callers', async () => {
+    // Arrange
+    const token = tokenWith({ sub: 'u1', role: ['Admin', 'User'] });
+
+    // Act
+    const first = firstValueFrom(store.refresh());
+    const second = firstValueFrom(store.refresh());
+    const req = http.expectOne((r) => r.url.endsWith('/api/v1/auth/refresh'));
+    req.flush({ accessToken: token, expiresAt: '2030-01-01T00:00:00Z' });
+
+    // Assert
+    expect(req.request.withCredentials).toBe(true);
+    expect(await first).toBe(token);
+    expect(await second).toBe(token);
+    expect(store.userId()).toBe('u1');
+    expect(store.hasRole('Admin')).toBe(true);
+  });
+
+  it('clears the token when refresh fails', async () => {
+    // Arrange
+    const result = firstValueFrom(store.refresh()).catch(() => 'failed');
+
+    // Act
+    http.expectOne((r) => r.url.endsWith('/api/v1/auth/refresh')).flush(null, { status: 401, statusText: 'Unauthorized' });
+
+    // Assert
+    expect(await result).toBe('failed');
+    expect(store.isLoggedIn()).toBe(false);
+  });
+});
 ```
 
 ## 4. DTO types

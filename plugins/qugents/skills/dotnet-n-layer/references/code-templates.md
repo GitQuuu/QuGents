@@ -136,7 +136,7 @@ public sealed record EditProductRequest(
     [property: Range(0, 1_000_000)] decimal Price);
 ```
 
-`User.GetUserId()` is a small `ClaimsPrincipal` extension in the Api project (e.g. reads `ClaimTypes.NameIdentifier`). The BLL receives the value, never the principal.
+`User.GetUserId()` is a small `ClaimsPrincipal` extension in the Api project that reads the JWT `sub` claim (see the `dotnet-identity-jwt` skill). The BLL receives the value, never the principal.
 
 ## 4. BLL
 

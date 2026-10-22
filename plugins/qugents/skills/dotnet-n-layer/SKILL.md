@@ -15,7 +15,7 @@ The backend is a JSON Web API and nothing else. All UI lives in the separate Ang
 - **No server-rendered UI:** no MVC views (`View()`, `.cshtml`), Razor Pages, Blazor, `ViewBag`/`TempData`, or HTML responses. If a task asks for a screen, the backend part is an endpoint and the screen is built in Angular.
 - Controllers, not Minimal APIs, so the thin-controller and slice structure holds (unless the project already uses Minimal APIs consistently).
 - Every endpoint is versioned (`api/v{version}/...`) and described in OpenAPI/Swagger through `[ProducesResponseType]`.
-- Stateless: JWT bearer authentication, no server-side session state. CORS is an explicit allow-list for the Angular app's origins.
+- Stateless: ASP.NET Core Identity for users/roles and JWT bearer access tokens with rotating refresh tokens (the `dotnet-identity-jwt` skill), no server-side session state. CORS is an explicit allow-list for the Angular app's origins.
 - The API knows nothing about the frontend: no Angular paths, no UI wording in responses beyond `ProblemDetails` titles.
 
 ## Projects and dependency direction
@@ -166,8 +166,10 @@ Each use case is a folder named after the operation. The class is split with `pa
 | Adapters | Blob storage, email, image hosting behind interfaces; named `HttpClient`s configured centrally |
 | DI | One `Add<Layer>()` extension per project, called from `Program.cs` |
 | Entities | Anemic. Business rules live in Services and the BLL |
+| Auth | ASP.NET Core Identity (`AddIdentityCore`, no cookies/UI) + JWT bearer + refresh tokens; `[Authorize]` by default, user id from `sub` passed to the BLL. Details: `dotnet-identity-jwt` |
 
 ## References
 
 - `references/code-templates.md`: C# skeletons for every layer (controller, BLL, service, `ServiceResult`, `ResponseService`, UoW, repository, DI, Hangfire job, test, extraction `WebService`). Read it before writing new code in this architecture.
 - `references/review-checklist.md`: ordered review checklist, thin-controller smells and common drift. Read it when reviewing a change or a codebase.
+- Related skills: `dotnet-identity-jwt` (auth), `dotnet-new-solution` (starting a new solution), `dotnet-testing` (tests).

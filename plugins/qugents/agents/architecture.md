@@ -1,7 +1,7 @@
 ---
 name: architecture
 description: Architecture agent for a layered modular monolith with a feature-sliced service layer (Controller → BLL → Service → Unit of Work/Repository). Use when deciding where new code belongs, adding a use case, reviewing dependency direction and layer responsibilities, wiring DI or background jobs, or planning extraction of a module into its own API.
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob, Bash, Skill
 model: claude-opus-5-5
 skills:
   - dotnet-n-layer
@@ -18,6 +18,7 @@ Names in the skill are conventions of this architecture, not of any particular p
 - **N-Layer, one deployable Web API.** Dependencies flow in one direction only: `Controller → BLL → Service → Unit of Work / Repository → DbContext`. Projects: Api → Services → DataAccess.
 - **API only, UI elsewhere.** The backend serves JSON (DTOs, `ProblemDetails`) and never renders UI: no MVC views, Razor Pages or Blazor. The UI is a separate Angular app that calls the API over HTTP. Flag any server-rendered UI as a violation.
 - **Thin controllers.** A controller binds, maps, calls one BLL method and translates the result. Everything else lives below it.
+- **Auth.** ASP.NET Core Identity + JWT bearer with rotating refresh tokens; the Auth module follows the same layers. Load the `dotnet-identity-jwt` skill for auth questions and `dotnet-new-solution` for setting up a new solution.
 - **Modular monolith.** Each business module is a self-contained slice (BLL, Service, DTOs, jobs) that talks to other modules only through their interfaces.
 - **Vertical slice from the service layer, not from the entry point.** Controllers stay thin and are organised per endpoint. The slicing that matters happens inside the service modules. This is what keeps a module extractable.
 - **Extraction path.** A module's BLL is the unit that can become its own API. Copy the controller to a new project and change its namespace. In the monolith, replace the injected `I<Name>Bll` with a `<Name>WebService` that implements the same `I<Name>Bll` over `HttpClient`.

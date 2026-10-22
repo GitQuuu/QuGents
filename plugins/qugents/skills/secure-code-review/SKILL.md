@@ -54,7 +54,9 @@ Formatting and style that a linter/formatter enforces are not findings.
 **Secrets and configuration**
 - [ ] No connection strings, keys, DSNs or tokens in code or committed `appsettings.*.json`.
 - [ ] CORS is an explicit allow-list, not `AllowAnyOrigin` with credentials.
-- [ ] JWT validation keeps issuer, audience, lifetime and signing key validation on.
+- [ ] JWT validation keeps issuer, audience, lifetime and signing key validation on; `MapInboundClaims = false` with `NameClaimType = "sub"` and `RoleClaimType = "role"`.
+- [ ] Identity via `AddIdentityCore` (no cookie schemes/UI); login gives the same 401 for unknown user, wrong password and lockout, and calls `AccessFailedAsync` on failure.
+- [ ] Refresh tokens are stored hashed, rotated on use, revoked as a family on reuse, and sent only in an HttpOnly + Secure cookie scoped to the auth path. Details: `dotnet-identity-jwt` skill.
 
 **Background jobs**
 - [ ] Payloads hold no secrets, streams or `HttpContext`; jobs re-check authorization-relevant state if time has passed.
