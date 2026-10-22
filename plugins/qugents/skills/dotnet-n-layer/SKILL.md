@@ -165,7 +165,8 @@ Each use case is a folder named after the operation. The class is split with `pa
 | Cache-aside | `ICacheService` over `IMemoryCache`; the BLL calls `ClearAll()` after writes |
 | Adapters | Blob storage, email, image hosting behind interfaces; named `HttpClient`s configured centrally |
 | DI | One `Add<Layer>()` extension per project, called from `Program.cs` |
-| Entities | Anemic. Business rules live in Services and the BLL |
+| Entities | Anemic. Business rules live in Services and the BLL. Timestamps as UTC `DateTime` |
+| Database | SQLite (`Data Source=app.db`) until the project switches provider. Check the provider in `AddDataAccess`; on SQLite, queries cannot compare/order `DateTimeOffset` or `decimal` |
 | Auth | ASP.NET Core Identity (`AddIdentityCore`, no cookies/UI) + JWT bearer + refresh tokens; `[Authorize]` by default, user id from `sub` passed to the BLL. Details: `dotnet-identity-jwt` |
 
 ## References

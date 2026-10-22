@@ -6,7 +6,7 @@ Packages:
 
 | Project | Packages |
 |---|---|
-| DataAccess | `Microsoft.AspNetCore.Identity.EntityFrameworkCore`, `Microsoft.EntityFrameworkCore.SqlServer` |
+| DataAccess | `Microsoft.AspNetCore.Identity.EntityFrameworkCore`, `Microsoft.EntityFrameworkCore.Sqlite` (or the provider the project has moved to) |
 | Services | `Microsoft.IdentityModel.JsonWebTokens` (Identity types come via DataAccess) |
 | Api | `Microsoft.AspNetCore.Authentication.JwtBearer` |
 
@@ -37,18 +37,19 @@ public sealed class ApplicationUser : IdentityUser
 }
 
 // <App>.DataAccess/Entities/RefreshToken.cs
+// DateTime in UTC, not DateTimeOffset: SQLite cannot compare DateTimeOffset in queries.
 public sealed class RefreshToken
 {
     public Guid Id { get; set; }
     public string UserId { get; set; } = "";
     public string TokenHash { get; set; } = "";          // SHA-256 hex, never the raw token
     public Guid FamilyId { get; set; }                     // all rotations of one login
-    public DateTimeOffset CreatedAt { get; set; }
-    public DateTimeOffset ExpiresAt { get; set; }
-    public DateTimeOffset? RevokedAt { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime ExpiresAt { get; set; }
+    public DateTime? RevokedAt { get; set; }
     public string? ReplacedByTokenHash { get; set; }
 
-    public bool IsActive(DateTimeOffset now) => RevokedAt is null && ExpiresAt > now;
+    public bool IsActive(DateTime utcNow) => RevokedAt is null && ExpiresAt > utcNow;
 }
 
 // <App>.DataAccess/AppDbContext.cs
@@ -83,8 +84,8 @@ using Microsoft.EntityFrameworkCore;
 public interface IRefreshTokenRepository : IBaseRepository<RefreshToken>
 {
     Task<RefreshToken?> GetByHashAsync(string tokenHash, CancellationToken ct = default);   // tracked
-    Task<IReadOnlyList<RefreshToken>> GetActiveByFamilyAsync(Guid familyId, DateTimeOffset now, CancellationToken ct = default);
-    Task<IReadOnlyList<RefreshToken>> GetActiveByUserAsync(string userId, DateTimeOffset now, CancellationToken ct = default);
+    Task<IReadOnlyList<RefreshToken>> GetActiveByFamilyAsync(Guid familyId, DateTime now, CancellationToken ct = default);
+    Task<IReadOnlyList<RefreshToken>> GetActiveByUserAsync(string userId, DateTime now, CancellationToken ct = default);
 }
 
 public sealed class RefreshTokenRepository(AppDbContext db) : BaseRepository<RefreshToken>(db), IRefreshTokenRepository
@@ -92,10 +93,10 @@ public sealed class RefreshTokenRepository(AppDbContext db) : BaseRepository<Ref
     public Task<RefreshToken?> GetByHashAsync(string tokenHash, CancellationToken ct = default) =>
         Set.FirstOrDefaultAsync(t => t.TokenHash == tokenHash, ct);
 
-    public async Task<IReadOnlyList<RefreshToken>> GetActiveByFamilyAsync(Guid familyId, DateTimeOffset now, CancellationToken ct = default) =>
+    public async Task<IReadOnlyList<RefreshToken>> GetActiveByFamilyAsync(Guid familyId, DateTime now, CancellationToken ct = default) =>
         await Set.Where(t => t.FamilyId == familyId && t.RevokedAt == null && t.ExpiresAt > now).ToListAsync(ct);
 
-    public async Task<IReadOnlyList<RefreshToken>> GetActiveByUserAsync(string userId, DateTimeOffset now, CancellationToken ct = default) =>
+    public async Task<IReadOnlyList<RefreshToken>> GetActiveByUserAsync(string userId, DateTime now, CancellationToken ct = default) =>
         await Set.Where(t => t.UserId == userId && t.RevokedAt == null && t.ExpiresAt > now).ToListAsync(ct);
 }
 ```
@@ -115,7 +116,7 @@ public static class DataAccessRegistration
 {
     public static IServiceCollection AddDataAccess(this IServiceCollection services, IConfiguration config)
     {
-        services.AddDbContext<AppDbContext>(o => o.UseSqlServer(config.GetConnectionString("Default")));
+        services.AddDbContext<AppDbContext>(o => o.UseSqlite(config.GetConnectionString("Default"))); // "Data Source=app.db" to start
 
         services.AddIdentityCore<ApplicationUser>(o =>
             {
@@ -308,8 +309,8 @@ public sealed partial class AuthService : IAuthService
             UserId = user.Id,
             TokenHash = refreshHash,
             FamilyId = familyId,
-            CreatedAt = now,
-            ExpiresAt = refreshExpires,
+            CreatedAt = now.UtcDateTime,
+            ExpiresAt = refreshExpires.UtcDateTime,
         }, ct);
 
         return new AuthTokens(accessToken, accessExpires, refreshToken, refreshExpires);
@@ -317,7 +318,7 @@ public sealed partial class AuthService : IAuthService
 
     public async Task<ServiceResult<AuthTokens>> RotateAsync(string refreshToken, CancellationToken ct)
     {
-        var now = clock.GetUtcNow();
+        var now = clock.GetUtcNow().UtcDateTime;
         var stored = await uow.RefreshTokens.GetByHashAsync(tokens.Hash(refreshToken), ct);
         if (stored is null)
             return ServiceResult<AuthTokens>.Fail(HttpStatusCode.Unauthorized, "Invalid refresh token.");
@@ -345,7 +346,7 @@ public sealed partial class AuthService : IAuthService
 
     public async Task RevokeFamilyAsync(string refreshToken, CancellationToken ct)
     {
-        var now = clock.GetUtcNow();
+        var now = clock.GetUtcNow().UtcDateTime;
         var stored = await uow.RefreshTokens.GetByHashAsync(tokens.Hash(refreshToken), ct);
         if (stored is null) return;
         foreach (var active in await uow.RefreshTokens.GetActiveByFamilyAsync(stored.FamilyId, now, ct))
@@ -619,12 +620,11 @@ builder.Services.AddCors(o => o.AddPolicy("web", p => p
 }
 ```
 
-Signing key and connection string locally:
+Signing key locally (the SQLite connection string `Data Source=app.db` is not a secret and lives in `appsettings.json`):
 
 ```bash
 dotnet user-secrets init --project src/<App>.Api
 dotnet user-secrets set "Jwt:SigningKey" "<at least 32 random characters>" --project src/<App>.Api
-dotnet user-secrets set "ConnectionStrings:Default" "<connection string>" --project src/<App>.Api
 ```
 
-In production: environment variables (`Jwt__SigningKey`) or a vault. Rotating the key logs everyone out of their access tokens; refresh tokens keep working.
+In production: environment variables (`Jwt__SigningKey`, and `ConnectionStrings__Default` once on a database server) or a vault. Rotating the key logs everyone out of their access tokens; refresh tokens keep working.

@@ -338,7 +338,7 @@ public static class DataAccessRegistration
 {
     public static IServiceCollection AddDataAccess(this IServiceCollection services, IConfiguration config)
     {
-        services.AddDbContext<AppDbContext>(o => o.UseSqlServer(config.GetConnectionString("Default")));
+        services.AddDbContext<AppDbContext>(o => o.UseSqlite(config.GetConnectionString("Default"))); // SQLite "Data Source=app.db" to start
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IProductRepository, ProductRepository>();
         return services;

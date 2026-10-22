@@ -1,6 +1,6 @@
 ---
 name: dotnet-new-solution
-description: Bootstraps a new solution for this stack from scratch with the dotnet and Angular CLIs - Web API (controllers) + Services + DataAccess + NUnit tests, ASP.NET Core Identity with JWT, central package management, user secrets, and an Angular + PrimeNG + Tailwind app. Use when starting a new project or repo, or when asked how to set one up.
+description: Bootstraps a new solution for this stack from scratch with the dotnet and Angular CLIs - Web API (controllers) + Services + DataAccess + NUnit tests, SQLite (app.db) as the starting database, ASP.NET Core Identity with JWT, central package management, user secrets, and an Angular + PrimeNG + Tailwind app. Use when starting a new project or repo, or when asked how to set one up.
 ---
 
 # New solution: Web API + Identity/JWT + Angular
@@ -38,8 +38,8 @@ Central package management (`Directory.Packages.props`) replaces a separate "Pac
 ## 2. Packages
 
 ```bash
-# DataAccess: EF Core + Identity stores
-dotnet add src/Shop.DataAccess package Microsoft.EntityFrameworkCore.SqlServer
+# DataAccess: EF Core (SQLite to start, see section 4) + Identity stores
+dotnet add src/Shop.DataAccess package Microsoft.EntityFrameworkCore.Sqlite
 dotnet add src/Shop.DataAccess package Microsoft.AspNetCore.Identity.EntityFrameworkCore
 
 # Services: mapping + JWT creation
@@ -71,16 +71,33 @@ Create, in this order (templates in the referenced skills):
 2. `dotnet-identity-jwt`: `ApplicationUser`, `RefreshToken`, `AppDbContext : IdentityDbContext<ApplicationUser>`, `AddIdentityCore` in `AddDataAccess`, `JwtOptions`, `TokenService`, the Auth module, `AuthController`, `AddJwtAuthentication`, `GetUserId()`, `RoleSeeder`.
 3. `Program.cs`, `Directory.Build.props`, `appsettings.json` and `Shop.Api.http` from `references/solution-templates.md`.
 
-## 4. Secrets and database
+## 4. Database (SQLite `app.db`) and secrets
+
+New solutions start on **SQLite with a local `app.db` file**: no database server to install, and the project owner switches provider when they need to.
+
+- Connection string `"Data Source=app.db"` in `appsettings.json` (a file path, not a secret).
+- Run `dotnet run` and `dotnet ef` **from `src/Shop.Api`**, so the relative path always resolves to `src/Shop.Api/app.db`.
+- Ignore the database files in git: add `*.db`, `*.db-shm` and `*.db-wal` to `.gitignore`.
 
 ```bash
 dotnet user-secrets init --project src/Shop.Api
 dotnet user-secrets set "Jwt:SigningKey" "<at least 32 random characters>" --project src/Shop.Api
-dotnet user-secrets set "ConnectionStrings:Default" "Server=localhost;Database=Shop;Trusted_Connection=True;TrustServerCertificate=True" --project src/Shop.Api
 
-dotnet ef migrations add InitialIdentity --project src/Shop.DataAccess --startup-project src/Shop.Api
-dotnet ef database update --project src/Shop.DataAccess --startup-project src/Shop.Api
+cd src/Shop.Api
+dotnet ef migrations add InitialIdentity --project ../Shop.DataAccess
+dotnet ef database update --project ../Shop.DataAccess
+dotnet run
 ```
+
+**SQLite limits to design around** (EF Core can store these types but not compare or order them in SQL, so such queries throw):
+- Use `DateTime` in UTC for entity timestamps, not `DateTimeOffset`.
+- Don't filter or sort on `decimal` columns in queries (prices, amounts) until the move to a server database, or store minor units as `long` (øre/cents).
+
+**Switching database later** (e.g. SQL Server or PostgreSQL):
+1. Replace the package in DataAccess (`Microsoft.EntityFrameworkCore.SqlServer` or `Npgsql.EntityFrameworkCore.PostgreSQL`) and `UseSqlite` with `UseSqlServer`/`UseNpgsql` in `AddDataAccess`.
+2. Move the connection string to user secrets / environment variables (`ConnectionStrings__Default`); it now contains credentials.
+3. Migrations are provider-specific: delete the `Migrations` folder and create a fresh `Initial` migration (data in `app.db` is not migrated).
+4. The `DateTime`/`decimal` limits above no longer apply.
 
 ## 5. Angular app
 
@@ -95,7 +112,7 @@ Then follow the `angular-frontend` skill: `.postcssrc.json`, `src/styles.css`, `
 ## 6. Done when
 
 - `dotnet build` has no warnings (warnings are errors via `Directory.Build.props`) and `dotnet test` is green.
-- `dotnet run --project src/Shop.Api` starts; `/openapi/v1.json` and `/swagger` load in Development.
+- `dotnet run` (from `src/Shop.Api`) starts and creates no surprises: `app.db` sits in `src/Shop.Api` and is git-ignored; `/openapi/v1.json` and `/swagger` load in Development.
 - The `Shop.Api.http` requests work in order: register → login (cookie set, access token returned) → a protected endpoint with the token → refresh → logout.
 - `npx ng build` and `npx ng test --watch=false` pass in `web/`.
 - No secrets in committed files (`git grep -n "SigningKey\|Password="` finds only placeholders).

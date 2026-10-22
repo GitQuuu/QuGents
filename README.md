@@ -25,7 +25,7 @@ plugins/qugents/
   skills/
     dotnet-n-layer/                    API → Service → DAL, thin controllers, slices, C#-skabeloner (backend er altid Web API)
     dotnet-identity-jwt/               ASP.NET Core Identity + JWT + roterende refresh tokens (backend + Angular AuthStore)
-    dotnet-new-solution/               opstart af ny løsning: webapi + Services + DataAccess + NUnit + Identity/JWT + Angular
+    dotnet-new-solution/               opstart af ny løsning: webapi + Services + DataAccess + NUnit + SQLite (app.db) + Identity/JWT + Angular
     dotnet-testing/                    NUnit 4, Arrange-Act-Assert, FakeItEasy, test-skabeloner
     angular-frontend/                  Angular 22 + PrimeNG 22 + Tailwind 4 (signals, httpResource, Signal Forms), TS-skabeloner
     secure-code-review/                review-tjekliste .NET + Angular, severity, output-format

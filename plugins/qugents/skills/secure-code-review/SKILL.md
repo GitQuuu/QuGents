@@ -52,7 +52,7 @@ Formatting and style that a linter/formatter enforces are not findings.
 - [ ] No passwords, tokens, personal data or full request bodies in logs/Sentry.
 
 **Secrets and configuration**
-- [ ] No connection strings, keys, DSNs or tokens in code or committed `appsettings.*.json`.
+- [ ] No connection strings with credentials, keys, DSNs or tokens in code or committed `appsettings.*.json` (a local SQLite `Data Source=app.db` is fine). `*.db` files are git-ignored.
 - [ ] CORS is an explicit allow-list, not `AllowAnyOrigin` with credentials.
 - [ ] JWT validation keeps issuer, audience, lifetime and signing key validation on; `MapInboundClaims = false` with `NameClaimType = "sub"` and `RoleClaimType = "role"`.
 - [ ] Identity via `AddIdentityCore` (no cookie schemes/UI); login gives the same 401 for unknown user, wrong password and lockout, and calls `AccessFailedAsync` on failure.

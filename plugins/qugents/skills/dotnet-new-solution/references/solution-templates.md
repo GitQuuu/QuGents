@@ -103,7 +103,7 @@ To try protected endpoints from Swagger UI, paste the token into a REST client (
 {
   "Logging": { "LogLevel": { "Default": "Information", "Microsoft.AspNetCore": "Warning" } },
   "AllowedHosts": "*",
-  "ConnectionStrings": { "Default": "" },
+  "ConnectionStrings": { "Default": "Data Source=app.db" },
   "Jwt": {
     "Issuer": "https://localhost",
     "Audience": "shop-web",
@@ -123,7 +123,7 @@ To try protected endpoints from Swagger UI, paste the token into a REST client (
 }
 ```
 
-`ConnectionStrings:Default` and `Jwt:SigningKey` are set with `dotnet user-secrets` locally and environment variables in production (`ConnectionStrings__Default`, `Jwt__SigningKey`). Startup fails fast (`ValidateOnStart`) when the key is missing or shorter than 32 characters.
+`Jwt:SigningKey` is set with `dotnet user-secrets` locally and an environment variable in production (`Jwt__SigningKey`). Startup fails fast (`ValidateOnStart`) when the key is missing or shorter than 32 characters. The SQLite connection string is only a file path, so it stays in `appsettings.json`; when the project moves to a database server, the connection string moves to secrets/environment variables (`ConnectionStrings__Default`).
 
 ## `src/Shop.Api/Shop.Api.http`
 
