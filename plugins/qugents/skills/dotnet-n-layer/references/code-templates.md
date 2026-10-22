@@ -371,7 +371,7 @@ builder.Services
     .AddScoped<IResponseService, ResponseService>();
 ```
 
-Connection strings, Sentry DSN and JWT keys come from configuration or user secrets, never from source.
+Connection strings, Sentry DSN and JWT keys come from configuration, never from code: `appsettings.Development.json` during development (marked `// DEV ONLY`), environment variables or a vault in production.
 
 ## 8. Background job hand-off
 

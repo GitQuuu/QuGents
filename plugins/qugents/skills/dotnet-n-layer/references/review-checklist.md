@@ -75,7 +75,7 @@ Report these when they matter to the task. Do not fix them unasked.
 
 - **BLL inherits `ControllerBase` or uses `IHttpContextAccessor`.** Couples the BLL to ASP.NET and blocks extraction. New BLL code takes user context as parameters and returns `ServiceResult<T>`/DTOs; the controller translates.
 - **Mixed target frameworks**, a CI runtime that differs from the pinned SDK, or a `global.json` with `rollForward`. Check before using newer C#/.NET features.
-- **Secrets or DSNs in `Program.cs`.** Move to configuration or user secrets.
+- **Secrets or DSNs in `Program.cs`.** Move to configuration: `appsettings.Development.json` for dev values, environment variables or a vault for production.
 - **Machine-specific `<HintPath>`** in project files. Replace with package or project references.
 - **One-off import or migration code** inside core service modules. Move to a separate tool or module.
 - **`CacheService.ClearAll()` with a static key set.** Simple, but wrong once there is more than one instance. Mention it if scaling out is on the table.

@@ -609,22 +609,31 @@ builder.Services.AddCors(o => o.AddPolicy("web", p => p
     .AllowCredentials())); // needed for the refresh cookie
 ```
 
-## 10. Configuration and secrets
+## 10. Configuration
 
-`appsettings.json` (committed, no secrets):
+During development everything lives in `appsettings.Development.json` (committed, no user secrets). `appsettings.json` keeps non-secret defaults and an empty `SigningKey`, so production fails fast until the real key is supplied.
 
-```json
+`appsettings.json`:
+
+```jsonc
 {
-  "Jwt": { "Issuer": "https://api.example.com", "Audience": "example-web", "AccessTokenMinutes": 15, "RefreshTokenDays": 14 },
+  // PRODUCTION: set Jwt__SigningKey (and ConnectionStrings__Default, Cors__Origins) via environment variables or a vault.
+  "Jwt": { "Issuer": "https://api.example.com", "Audience": "example-web", "SigningKey": "", "AccessTokenMinutes": 15, "RefreshTokenDays": 14 }
+}
+```
+
+`appsettings.Development.json`:
+
+```jsonc
+{
+  // DEV ONLY: local development values, committed on purpose so the project runs after a clone.
+  // Before the project goes to production: generate a NEW signing key and supply Jwt__SigningKey,
+  // ConnectionStrings__Default and Cors__Origins through environment variables or a vault.
+  // Never reuse this signing key outside development.
+  "ConnectionStrings": { "Default": "Data Source=app.db" },
+  "Jwt": { "SigningKey": "<random dev key, at least 32 characters, generated per project>" },
   "Cors": { "Origins": [ "http://localhost:4200" ] }
 }
 ```
 
-Signing key locally (the SQLite connection string `Data Source=app.db` is not a secret and lives in `appsettings.json`):
-
-```bash
-dotnet user-secrets init --project src/<App>.Api
-dotnet user-secrets set "Jwt:SigningKey" "<at least 32 random characters>" --project src/<App>.Api
-```
-
-In production: environment variables (`Jwt__SigningKey`, and `ConnectionStrings__Default` once on a database server) or a vault. Rotating the key logs everyone out of their access tokens; refresh tokens keep working.
+In production: a new key via environment variables (`Jwt__SigningKey`, plus `ConnectionStrings__Default`) or a vault; never the dev key. Rotating the key logs everyone out of their access tokens; refresh tokens keep working.

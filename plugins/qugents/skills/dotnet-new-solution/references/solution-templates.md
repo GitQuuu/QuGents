@@ -97,13 +97,20 @@ await app.RunAsync();
 
 To try protected endpoints from Swagger UI, paste the token into a REST client (`Shop.Api.http`) instead; the built-in OpenAPI document has no security scheme until you add a document transformer for it.
 
-## `src/Shop.Api/appsettings.json`
+## Configuration
 
-```json
+During development **all configuration lives in `appsettings.Development.json`** (committed), including the dev signing key and the SQLite connection string. No user secrets. `appsettings.json` holds only non-secret defaults and leaves the production values empty, so a production start without them fails fast (`ValidateOnStart`).
+
+ASP.NET Core's JSON configuration accepts `//` comments, so the files carry the production reminder themselves.
+
+`src/Shop.Api/appsettings.json`
+
+```jsonc
 {
   "Logging": { "LogLevel": { "Default": "Information", "Microsoft.AspNetCore": "Warning" } },
   "AllowedHosts": "*",
-  "ConnectionStrings": { "Default": "Data Source=app.db" },
+  // PRODUCTION: set ConnectionStrings__Default, Jwt__SigningKey and Cors__Origins via environment variables or a vault.
+  "ConnectionStrings": { "Default": "" },
   "Jwt": {
     "Issuer": "https://localhost",
     "Audience": "shop-web",
@@ -115,15 +122,28 @@ To try protected endpoints from Swagger UI, paste the token into a REST client (
 }
 ```
 
-`appsettings.Development.json`:
+`src/Shop.Api/appsettings.Development.json`
 
-```json
+```jsonc
 {
+  // DEV ONLY: local development values, committed on purpose so the project runs after a clone.
+  // Before the project goes to production: generate a NEW signing key and supply Jwt__SigningKey,
+  // ConnectionStrings__Default and Cors__Origins through environment variables or a vault.
+  // Never reuse this signing key outside development.
+  "ConnectionStrings": { "Default": "Data Source=app.db" },
+  "Jwt": { "SigningKey": "<random dev key, at least 32 characters, generated per project>" },
   "Cors": { "Origins": [ "http://localhost:4200" ] }
 }
 ```
 
-`Jwt:SigningKey` is set with `dotnet user-secrets` locally and an environment variable in production (`Jwt__SigningKey`). Startup fails fast (`ValidateOnStart`) when the key is missing or shorter than 32 characters. The SQLite connection string is only a file path, so it stays in `appsettings.json`; when the project moves to a database server, the connection string moves to secrets/environment variables (`ConnectionStrings__Default`).
+Generate the dev key once per project and paste it in:
+
+```bash
+# PowerShell
+[Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(48))
+# Bash
+openssl rand -base64 48
+```
 
 ## `src/Shop.Api/Shop.Api.http`
 

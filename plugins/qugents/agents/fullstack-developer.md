@@ -34,7 +34,7 @@ The preloaded skills are the rules: `dotnet-n-layer` for the API (thin controlle
 - Do exactly the task. No drive-by refactors, renames or formatting changes in files you did not need to touch; list them under "Noticed" instead.
 - New test files for the new behavior are the **tester's** job. You keep the build and the existing tests green, and you list the cases that need tests.
 - Do not add NuGet or npm packages unless the task cannot be done without them; name any you add and why.
-- No secrets, connection strings or tokens in code or committed config.
+- No secrets, connection strings or tokens in code. Development values go in `appsettings.Development.json` under its `// DEV ONLY` comment; never put production values in the repo.
 - If you cannot finish (missing information, failing build you cannot fix, environment issue), stop and report exactly where you are rather than leaving half-done changes undescribed.
 
 ## Hand-off summary

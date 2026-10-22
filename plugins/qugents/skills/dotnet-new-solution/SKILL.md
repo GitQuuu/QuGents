@@ -1,6 +1,6 @@
 ---
 name: dotnet-new-solution
-description: Bootstraps a new solution for this stack from scratch with the dotnet and Angular CLIs - Web API (controllers) + Services + DataAccess + NUnit tests, SQLite (app.db) as the starting database, ASP.NET Core Identity with JWT, central package management, user secrets, and an Angular + PrimeNG + Tailwind app. Use when starting a new project or repo, or when asked how to set one up.
+description: Bootstraps a new solution for this stack from scratch with the dotnet and Angular CLIs - Web API (controllers) + Services + DataAccess + NUnit tests, SQLite (app.db) as the starting database, ASP.NET Core Identity with JWT, central package management, development configuration in appsettings.Development.json, and an Angular + PrimeNG + Tailwind app. Use when starting a new project or repo, or when asked how to set one up.
 ---
 
 # New solution: Web API + Identity/JWT + Angular
@@ -69,23 +69,23 @@ Create, in this order (templates in the referenced skills):
 
 1. `dotnet-n-layer`: `ServiceResult<T>`, `IBaseRepository<T>`/`BaseRepository<T>`, `IUnitOfWork`/`UnitOfWork`, `ResponseService`, `AddDataAccess`/`AddServices` extensions, `ICacheService`.
 2. `dotnet-identity-jwt`: `ApplicationUser`, `RefreshToken`, `AppDbContext : IdentityDbContext<ApplicationUser>`, `AddIdentityCore` in `AddDataAccess`, `JwtOptions`, `TokenService`, the Auth module, `AuthController`, `AddJwtAuthentication`, `GetUserId()`, `RoleSeeder`.
-3. `Program.cs`, `Directory.Build.props`, `appsettings.json` and `Shop.Api.http` from `references/solution-templates.md`.
+3. `Program.cs`, `Directory.Build.props`, `appsettings.json`, `appsettings.Development.json` and `Shop.Api.http` from `references/solution-templates.md`.
 
-## 4. Database (SQLite `app.db`) and secrets
+## 4. Database (SQLite `app.db`) and configuration
 
 New solutions start on **SQLite with a local `app.db` file**: no database server to install, and the project owner switches provider when they need to.
 
-- Connection string `"Data Source=app.db"` in `appsettings.json` (a file path, not a secret).
-- Run `dotnet run` and `dotnet ef` **from `src/Shop.Api`**, so the relative path always resolves to `src/Shop.Api/app.db`.
+- **All development configuration goes in `appsettings.Development.json`**: the connection string `"Data Source=app.db"`, a generated dev JWT signing key and the CORS origin. No user secrets. The file starts with a `// DEV ONLY` comment saying these values must be replaced via environment variables or a vault before production, and `appsettings.json` leaves `SigningKey` and the connection string empty so production cannot start without them.
+- Run `dotnet run` and `dotnet ef` **from `src/Shop.Api`**, so the relative path always resolves to `src/Shop.Api/app.db`. Pass `-- --environment Development` to `dotnet ef` so it reads `appsettings.Development.json` (`dotnet run` gets Development from `launchSettings.json`).
 - Ignore the database files in git: add `*.db`, `*.db-shm` and `*.db-wal` to `.gitignore`.
 
 ```bash
-dotnet user-secrets init --project src/Shop.Api
-dotnet user-secrets set "Jwt:SigningKey" "<at least 32 random characters>" --project src/Shop.Api
+# generate the dev signing key for appsettings.Development.json
+openssl rand -base64 48        # PowerShell: [Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(48))
 
 cd src/Shop.Api
-dotnet ef migrations add InitialIdentity --project ../Shop.DataAccess
-dotnet ef database update --project ../Shop.DataAccess
+dotnet ef migrations add InitialIdentity --project ../Shop.DataAccess -- --environment Development
+dotnet ef database update --project ../Shop.DataAccess -- --environment Development
 dotnet run
 ```
 
@@ -95,7 +95,7 @@ dotnet run
 
 **Switching database later** (e.g. SQL Server or PostgreSQL):
 1. Replace the package in DataAccess (`Microsoft.EntityFrameworkCore.SqlServer` or `Npgsql.EntityFrameworkCore.PostgreSQL`) and `UseSqlite` with `UseSqlServer`/`UseNpgsql` in `AddDataAccess`.
-2. Move the connection string to user secrets / environment variables (`ConnectionStrings__Default`); it now contains credentials.
+2. Put the new dev connection string in `appsettings.Development.json`; production gets its own via `ConnectionStrings__Default` (environment variable or vault).
 3. Migrations are provider-specific: delete the `Migrations` folder and create a fresh `Initial` migration (data in `app.db` is not migrated).
 4. The `DateTime`/`decimal` limits above no longer apply.
 
@@ -115,7 +115,9 @@ Then follow the `angular-frontend` skill: `.postcssrc.json`, `src/styles.css`, `
 - `dotnet run` (from `src/Shop.Api`) starts and creates no surprises: `app.db` sits in `src/Shop.Api` and is git-ignored; `/openapi/v1.json` and `/swagger` load in Development.
 - The `Shop.Api.http` requests work in order: register → login (cookie set, access token returned) → a protected endpoint with the token → refresh → logout.
 - `npx ng build` and `npx ng test --watch=false` pass in `web/`.
-- No secrets in committed files (`git grep -n "SigningKey\|Password="` finds only placeholders).
+- Dev values exist only in `appsettings.Development.json` with the `// DEV ONLY` comment; `appsettings.json` has empty `SigningKey` and connection string.
+
+**Before production** (not part of the bootstrap, but say it in the hand-off): generate a new signing key and set `Jwt__SigningKey`, `ConnectionStrings__Default` and `Cors__Origins` through environment variables or a vault. The dev key in the repo must never be used outside development.
 
 If the repo starts from the `ai-agent-dotnet-template`, apply the same structure inside it instead of creating a new solution file.
 
