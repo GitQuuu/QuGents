@@ -16,8 +16,9 @@ Read the `## Azure DevOps` section of the repo's `CLAUDE.md`:
 - Organization: contoso
 - Project: Pos
 - Team: Pos Team
-- Repository: Pos
-- Default branch: main
+- Code host: GitHub            (or: Azure Repos)
+- Repository: GitQuuu/Pos      (GitHub owner/repo, or the Azure Repos name)
+- Integration branch: development
 ```
 
 If the section is missing, ask the user once for these values and add the section to `CLAUDE.md`.
@@ -35,11 +36,14 @@ Azure DevOps is reached through the local **Azure DevOps MCP server** (`@azure-d
 | Update fields, tags, state | `wit_work_item_write` → `update` (`updates: [{op: "replace", path: "/fields/System.Tags", value: "…"}]`, prepend `{op: "test", path: "/rev", value: <rev>}` to avoid overwriting a concurrent edit) or `update_batch` for several items |
 | Comment | `wit_work_item_comment_write` → `add` |
 | Dependencies | `wit_work_item_link_write` → `link` (`updates: [{id, linkToId, type: "predecessor"}]`) |
-| Pull request | `repo_pull_request_write` → `create` (`repositoryId` + `project`, `sourceRefName: "refs/heads/…"`, `targetRefName`, `workItems: "<taskId>"` links the task; `description` max 4000 characters) |
+| Pull request, **Azure Repos** | `repo_pull_request_write` → `create` (`repositoryId` + `project`, `sourceRefName: "refs/heads/…"`, `targetRefName`, `workItems: "<taskId>"` links the task; `description` max 4000 characters) |
+| Pull request, **GitHub** | `gh pr create --base development --head agent/<id>-<slug> --title … --body-file …` (GitHub CLI, user's login). The Azure Boards GitHub app links `AB#<id>` and closes the task on merge with `Fixes AB#<id>` |
 
 If the MCP tools are not available, stop and show the setup command from the README (`claude mcp add … @azure-devops/mcp …`). Never fall back to guessing work item content.
 
 Git (branches, commits, push) is done with the local `git` CLI, using the user's credentials.
+
+**Branch strategy:** three long-lived branches `development → staging → prod` (see the `devops-github-actions` skill). Agents branch from and open PRs to the **integration branch** (`development`) only. `staging` and `prod` change only through release PRs the PO merges.
 
 ## Scrum process mapping
 
@@ -109,10 +113,10 @@ Pick order among ready tasks: the parent PBI's `BacklogPriority` first, then the
 
 ## Git and pull request conventions
 
-- Branch: `agent/<taskId>-<short-slug>` from an up-to-date default branch (`git switch main && git pull`).
-- Commits: imperative subject, then a line `AB#<taskId>` so Azure Repos links the commit.
-- Never commit to or push the default branch. Never force-push someone else's branch.
-- PR title: `AB#<taskId> <task title>`. Target: the default branch. Description:
+- Branch: `agent/<taskId>-<short-slug>` from an up-to-date integration branch (`git switch development && git pull`).
+- Commits: imperative subject, then a line `AB#<taskId>` so Azure Boards links the commit.
+- Never commit to or push `development`, `staging` or `prod`. Never force-push someone else's branch.
+- PR title: `AB#<taskId> <task title>`. Target: `development`, never `staging` or `prod`. Description:
 
 ```markdown
 ## What
@@ -127,8 +131,10 @@ Pick order among ready tasks: the parent PBI's `BacklogPriority` first, then the
 ## Review
 <reviewer verdict + remaining non-blocking findings>
 
-AB#<taskId>
+Fixes AB#<taskId>
 ```
+
+(`Fixes AB#` closes the task when the PR is merged into the default branch `development`: Azure Boards GitHub app on GitHub, "Complete associated work items" on Azure Repos.)
 
 - The task is linked through `workItems` on create (and `AB#<id>` in the description).
 - The agents never approve, vote on, set auto-complete, bypass policies on, complete or merge pull requests (`vote`, `autoComplete`, `bypassPolicy` are off-limits).

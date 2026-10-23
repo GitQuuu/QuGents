@@ -20,13 +20,13 @@ Input: a Task id (`/qugents:ado-deliver 456`) or nothing (= the next ready task)
 
 - Tags: remove `agent-ready`, add `agent-working`. State: In Progress.
 - Comment: `Agent started on this task (branch agent/<id>-<slug>).`
-- `git switch <default> && git pull && git switch -c agent/<id>-<slug>`
+- `git switch development && git pull && git switch -c agent/<id>-<slug>` (the integration branch from `CLAUDE.md`)
 
 ## 3. Build with the team
 
 1. **Developer.** Spawn `qugents:fullstack-developer` with the task title, the full task description, the parent PBI's acceptance criteria, and: "Implement exactly this task. Do not commit."
 2. **Tester.** Spawn `qugents:tester` with the task spec, the developer's hand-off (including "For the tester") and: "Write and run the tests for this change. Do not commit."
-3. **Reviewer.** Spawn `qugents:reviewer` with the task spec and: "Review the uncommitted changes against the default branch (git diff)."
+3. **Reviewer.** Spawn `qugents:reviewer` with the task spec and: "Review the uncommitted changes against the integration branch (git diff)."
 4. **Fix loop (max 2 rounds).** If the tester reports bugs or the reviewer says *Request changes*: send the findings (Blockers and Majors only) to `qugents:fullstack-developer` to fix, then run tester and reviewer again. Structural findings may be checked with `qugents:architecture` first.
 5. If it is still not green after 2 rounds, or the developer stops with a question: go to **Blocked**.
 
@@ -35,8 +35,11 @@ Before committing, run `dotnet build`, `dotnet test` and (if the frontend change
 ## 4. Pull request
 
 - `git add` the changed files, commit (`<imperative summary>` + blank line + `AB#<id>`), `git push -u origin agent/<id>-<slug>`.
-- `repo_pull_request_write create` with the title and description template from `ado-backlog`, `sourceRefName: refs/heads/agent/<id>-<slug>`, `targetRefName: refs/heads/<default>` and `workItems: "<id>"` (links the task). Not a draft.
-- Tags: remove `agent-working`, add `agent-pr-open`. Leave the state In Progress (it closes when the PO completes the PR with "Complete associated work items").
+- Open the PR to `development` with the title and description template from `ado-backlog`:
+  - **GitHub:** `gh pr create --base development --head agent/<id>-<slug> --title "AB#<id> <title>" --body-file <file>`.
+  - **Azure Repos:** `repo_pull_request_write create` with `sourceRefName: refs/heads/agent/<id>-<slug>`, `targetRefName: refs/heads/development`, `workItems: "<id>"`.
+  Not a draft. Never target `staging` or `prod`.
+- Tags: remove `agent-working`, add `agent-pr-open`. Leave the state In Progress (`Fixes AB#<id>` closes it when the PO merges the PR).
 - Comment: `PR !<prId> is ready for review: <url>. Tests: <passed>/<total>. Review: <verdict>.`
 
 ## Blocked
@@ -51,6 +54,6 @@ Tell the user in a few lines: task id and title, PR link (or why it is blocked),
 
 ## Rules
 
-- Only `agent-ready` tasks are built. Never merge, approve or complete a PR. Never push to the default branch.
+- Only `agent-ready` tasks are built. Never merge, approve or complete a PR. Never push to `development`, `staging` or `prod`.
 - Never change acceptance criteria to fit the implementation; if the spec is wrong, block and ask.
 - Keep the PO's tags and comments; edit only the agent tags listed in `ado-backlog`.

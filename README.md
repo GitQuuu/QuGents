@@ -22,6 +22,7 @@ plugins/qugents/
     fullstack-developer.md             implementerer én opgave: API → Service → DAL + Angular
     tester.md                          NUnit + AAA + FakeItEasy, kun testkode
     reviewer.md                        korrekthed, sikkerhed, robusthed i et diff
+    devops.md                          GitHub Actions, development → staging → prod, deploy til Azure/MonsterASP
   skills/
     dotnet-n-layer/                    API → Service → DAL, thin controllers, slices, C#-skabeloner (backend er altid Web API)
     dotnet-identity-jwt/               ASP.NET Core Identity + JWT + roterende refresh tokens (backend + Angular AuthStore)
@@ -32,6 +33,7 @@ plugins/qugents/
     ado-backlog/                       Azure DevOps (Scrum): typer, felter, tags, WIQL, git/PR-konventioner
     ado-plan/                          PBI'er tagget agent-plan → child Tasks (agent-proposed)
     ado-deliver/                       agent-ready Task → holdet → PR linket til Task'en
+    devops-github-actions/             3-branch-strategi, CI/deploy/release/back-merge-workflows, rulesets, environments
 ```
 
 ### Agenter
@@ -43,6 +45,7 @@ plugins/qugents/
 | `qugents:fullstack-developer` | Bygger én opgave fra database til UI | Ja | dotnet-n-layer, angular-frontend | inherit (sessionens model) |
 | `qugents:tester` | Skriver og kører tests, finder huller | Kun testkode | dotnet-testing | sonnet |
 | `qugents:reviewer` | Verdict + fund efter alvor | Nej | secure-code-review | sonnet |
+| `qugents:devops` | CI/CD, branches, environments, release-PR'er | Ja (workflows/scripts) | devops-github-actions | sonnet |
 
 `model` kan ændres i hver agents frontmatter (`sonnet`, `opus`, `haiku`, `inherit` eller et fuldt model-id som `claude-opus-5-5`).
 
@@ -59,11 +62,12 @@ plugins/qugents/
 | `ado-plan` | `/qugents:ado-plan [PBI-id]` |
 | `ado-deliver` | `/qugents:ado-deliver [Task-id]` |
 | `ado-backlog` | (konventioner, hentes af de to ovenfor) |
+| `devops-github-actions` | `/qugents:devops-github-actions` |
 
 ## Arbejdsgang med holdet
 
 ```
-planner ──► (architecture: tjek planen) ──► fullstack-developer ──► tester ──► reviewer ──► PR
+planner ──► (architecture: tjek planen) ──► fullstack-developer ──► tester ──► reviewer ──► PR til development
                                                ▲                        │
                                                └──── fejl fundet ◄──────┘
 ```
@@ -128,7 +132,7 @@ Du skriver backloggen i Azure DevOps; holdet planlægger, bygger og åbner PR'er
 | 1 | Dig | Opret en **Product Backlog Item** med Description + Acceptance Criteria. Tag den `agent-plan` |
 | 2 | `/qugents:ado-plan` | planner bryder PBI'en ned i child **Tasks** (`T1 — …`) med kriterier, kontrakt og testcases, tagget `agent-proposed`. PBI'en får `agent-planned` + en kommentar |
 | 3 | Dig | Ret opgaverne til og skift `agent-proposed` → **`agent-ready`** på dem, der må bygges |
-| 4 | `/qugents:ado-deliver` | Tager næste `agent-ready` Task: branch `agent/<id>-…` → fullstack-developer → tester → reviewer (maks 2 rette-runder) → commit med `AB#<id>` → push → PR linket til Task'en. Tags: `agent-working` → `agent-pr-open` |
+| 4 | `/qugents:ado-deliver` | Tager næste `agent-ready` Task: branch `agent/<id>-…` → fullstack-developer → tester → reviewer (maks 2 rette-runder) → commit med `AB#<id>` → push → PR til `development` med `Fixes AB#<id>`. Tags: `agent-working` → `agent-pr-open` |
 | 5 | Dig | Review PR'en (CI grøn), godkend og complete med "Complete associated work items" |
 | — | Ved problemer | Task/PBI får `needs-human` + en kommentar med spørgsmålet eller fejlen |
 
@@ -146,11 +150,12 @@ Første gang et værktøj bruges, åbner browseren et Microsoft-login (eller til
 - Organization: <organisation>
 - Project: <projekt>
 - Team: <team>
-- Repository: <repo>
-- Default branch: main
+- Code host: GitHub
+- Repository: <owner>/<repo>
+- Integration branch: development
 ```
 
-Anbefalet i Azure DevOps: branch policy på `main` med påkrævet reviewer (dig) og build validation, så agenternes PR'er altid venter på dig.
+Branches: `development` (default, agenternes PR'er) → `staging` → `prod`. devops-agenten sætter rulesets op (PR + 1 godkendelse + grøn `ci`), så agenternes PR'er altid venter på dig. Giv agenterne deres egen GitHub-identitet (GitHub App eller maskinbruger), da GitHub ikke lader dig godkende dine egne PR'er. Installér Azure Boards-appen på GitHub-repoet, så `Fixes AB#<id>` lukker Task'en ved merge.
 
 ### Dagligt
 

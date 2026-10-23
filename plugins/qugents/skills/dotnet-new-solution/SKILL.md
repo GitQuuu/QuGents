@@ -138,6 +138,10 @@ In `angular.json` → `projects.web.architect.serve.options`: `"ssl": true, "ssl
 
 **Before production** (not part of the bootstrap, but say it in the hand-off): generate a new signing key and set `Jwt__SigningKey`, `ConnectionStrings__Default` and `Cors__Origins` through environment variables or a vault. The dev key in the repo must never be used outside development.
 
+## 7. Branches and CI/CD
+
+After the first commit, hand over to the `devops` agent (skill `devops-github-actions`): it creates `development`/`staging`/`prod`, sets `development` as default branch, adds the CI, deploy, release and back-merge workflows plus the ruleset, and lists the secrets/variables to create per environment.
+
 If the repo starts from the `ai-agent-dotnet-template`, apply the same structure inside it instead of creating a new solution file.
 
 ## References
