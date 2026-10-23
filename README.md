@@ -155,7 +155,7 @@ Første gang et værktøj bruges, åbner browseren et Microsoft-login (eller til
 - Integration branch: development
 ```
 
-Branches: `development` (default, agenternes PR'er) → `staging` → `prod`. devops-agenten sætter rulesets op (PR + 1 godkendelse + grøn `ci`), så agenternes PR'er altid venter på dig. Giv agenterne deres egen GitHub-identitet (GitHub App eller maskinbruger), da GitHub ikke lader dig godkende dine egne PR'er. Installér Azure Boards-appen på GitHub-repoet, så `Fixes AB#<id>` lukker Task'en ved merge.
+Branches: `development` (default, agenternes PR'er) → `staging` → `prod`. devops-agenten sætter rulesets op: kun `prod` kræver PR (med grøn `ci`), og ingen af de tre branches kan slettes eller force-pushes. Agenterne leverer stadig altid via PR'er mod `development`, så de venter på dig. Giv agenterne deres egen GitHub-identitet (GitHub App eller maskinbruger), da GitHub ikke lader dig godkende dine egne PR'er. Installér Azure Boards-appen på GitHub-repoet, så `Fixes AB#<id>` lukker Task'en ved merge.
 
 ### Dagligt
 

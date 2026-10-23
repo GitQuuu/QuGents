@@ -24,7 +24,7 @@ hotfix/*  ──PR──►  prod  ──back-merge PR──►  development
 Rules:
 - **Agents open PRs to `development` only.** Promotions to `staging` and `prod` are always the PO's decision; the devops agent may prepare the release PR but never merges it.
 - `development` is the GitHub default branch, so `Fixes AB#<id>` in a merged PR closes the Azure Boards work item (Azure Boards GitHub app).
-- No direct pushes, no force pushes, no deleting the three branches (rulesets below).
+- Only `prod` requires a pull request (with a green `ci`). `development` and `staging` accept direct pushes, but none of the three can be force-pushed or deleted (rulesets below). Agents still always deliver through PRs to `development`.
 - A hotfix merged into `prod` always gets a back-merge PR `prod → development` so the fix is not lost at the next release.
 
 ## Workflows (templates in `references/workflows.md`)
@@ -56,11 +56,18 @@ Angular gets one build configuration per environment (`dev`, `staging`, `product
 
 ## Branch rulesets
 
-`references/workflows.md` has a `gh api` script that creates one ruleset for `development`, `staging` and `prod`: PR required, 1 approval, required status check `ci`, no force push, no deletion. Run it once per repo with an admin token.
+`references/workflows.md` has a `gh api` script (idempotent, safe to re-run) that creates two rulesets:
+
+| Ruleset | Branches | Rules |
+|---|---|---|
+| `branch-safety` | `development`, `staging` | no deletion, no force push |
+| `prod-protection` | `prod` | PR required, required status check `ci`, approvals = script argument (default 0), no deletion, no force push |
+
+Run it once per repo with an admin token. Raise prod approvals to 1 only when someone other than the PR author can approve.
 
 ## Bot identity for agent PRs (important)
 
-GitHub does not let you approve your own pull request. If the agents push and open PRs with **your** token, the "1 approval" rule blocks every agent PR. Give the agents their own identity:
+GitHub does not let you approve your own pull request, and agent PRs opened with **your** token look like your own work (and PRs created with `GITHUB_TOKEN` do not trigger `ci`). Give the agents their own identity:
 - a **GitHub App** (best: per-repo installation, short-lived tokens), or
 - a **machine user** with a fine-grained PAT limited to the repo (Contents RW, Pull requests RW, Metadata R).
 

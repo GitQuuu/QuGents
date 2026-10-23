@@ -8,7 +8,7 @@ Validated with `actionlint` (incl. shellcheck). Replace `Shop.Api`, `web` and pa
 2. `deploy.yml` (Azure or MonsterASP)
 3. `release-pr.yml`
 4. `back-merge.yml`
-5. Repo setup script: branches, default branch, ruleset
+5. Repo setup script: branches, default branch, rulesets, environments
 6. Angular build configurations per environment
 7. SPA fallback files (`web.config` for MonsterASP, `staticwebapp.config.json` for Azure)
 8. GitHub Environments checklist
@@ -258,65 +258,99 @@ jobs:
           fi
 ```
 
-## 5. Repo setup (once, with an admin token)
+## 5. Repo setup (once, with an admin token; safe to re-run)
 
-`scripts/setup-github-repo.sh`:
+`scripts/setup-github-repo.sh` (on Windows run it from Git Bash: `bash scripts/setup-github-repo.sh <owner/repo>`):
 
 ```bash
 #!/usr/bin/env bash
-# Usage: scripts/setup-github-repo.sh <owner/repo>
-# Needs: gh CLI logged in as a repo admin, and a local clone with at least one commit on the current branch.
+# Usage: scripts/setup-github-repo.sh <owner/repo> [prod-approvals]
+# Needs: gh CLI logged in as a repo admin (gh auth login) and a local clone with at least one commit.
+# Windows: run from Git Bash. Safe to run again: existing branches, rulesets and environments are kept or updated.
+#
+# Result:
+#   development  default branch, no PR required, no deletion, no force push
+#   staging      no PR required, no deletion, no force push
+#   prod         PR + green `ci` required (+ [prod-approvals] approvals, default 0), no deletion, no force push
 set -euo pipefail
-REPO="$1"
+REPO="${1:?Usage: $0 <owner/repo> [prod-approvals]}"
+APPROVALS="${2:-0}"
 
-# Three long-lived branches from the current commit.
-git push origin HEAD:refs/heads/development HEAD:refs/heads/staging HEAD:refs/heads/prod
+gh auth status >/dev/null 2>&1 || { echo "Run 'gh auth login' first." >&2; exit 1; }
+
+# Three long-lived branches from the current commit (existing ones are left alone).
+for b in development staging prod; do
+  if git ls-remote --exit-code --heads origin "$b" >/dev/null; then
+    echo "Branch $b already exists"
+  else
+    git push origin "HEAD:refs/heads/$b"
+  fi
+done
 
 # development is the default branch (agent PRs target it; "Fixes AB#123" closes work items on merge).
 gh api --method PATCH "repos/$REPO" -f default_branch=development >/dev/null
+echo "Default branch: development"
 
-# One ruleset for all three: PR + 1 approval + green ci, no force push, no deletion.
-gh api --method POST "repos/$REPO/rulesets" --input - <<'JSON'
-{
-  "name": "three-branch-protection",
+ruleset_id() {
+  gh api "repos/$REPO/rulesets" --jq ".[] | select(.name == \"$1\") | .id"
+}
+
+# Create or update a ruleset by name.
+upsert_ruleset() {
+  local name="$1" body="$2" id
+  id=$(ruleset_id "$name")
+  if [ -n "$id" ]; then
+    gh api --method PUT "repos/$REPO/rulesets/$id" --input - <<<"$body" >/dev/null
+  else
+    gh api --method POST "repos/$REPO/rulesets" --input - <<<"$body" >/dev/null
+  fi
+  echo "Ruleset: $name"
+}
+
+# Earlier versions of this script required PRs on all three branches.
+OLD=$(ruleset_id three-branch-protection)
+if [ -n "$OLD" ]; then
+  gh api --method DELETE "repos/$REPO/rulesets/$OLD"
+  echo "Removed old ruleset: three-branch-protection"
+fi
+
+# development + staging: direct pushes allowed, but never deleted or force-pushed.
+upsert_ruleset branch-safety '{
+  "name": "branch-safety",
   "target": "branch",
   "enforcement": "active",
-  "conditions": {
-    "ref_name": {
-      "include": ["refs/heads/development", "refs/heads/staging", "refs/heads/prod"],
-      "exclude": []
-    }
-  },
-  "rules": [
-    { "type": "deletion" },
-    { "type": "non_fast_forward" },
-    {
-      "type": "pull_request",
-      "parameters": {
-        "required_approving_review_count": 1,
-        "dismiss_stale_reviews_on_push": true,
-        "require_code_owner_review": false,
-        "require_last_push_approval": false,
-        "required_review_thread_resolution": true
-      }
-    },
-    {
-      "type": "required_status_checks",
-      "parameters": {
-        "strict_required_status_checks_policy": false,
-        "required_status_checks": [{ "context": "ci" }]
-      }
-    }
+  "conditions": { "ref_name": { "include": ["refs/heads/development", "refs/heads/staging"], "exclude": [] } },
+  "rules": [ { "type": "deletion" }, { "type": "non_fast_forward" } ]
+}'
+
+# prod: only through a pull request with a green ci check.
+upsert_ruleset prod-protection "{
+  \"name\": \"prod-protection\",
+  \"target\": \"branch\",
+  \"enforcement\": \"active\",
+  \"conditions\": { \"ref_name\": { \"include\": [\"refs/heads/prod\"], \"exclude\": [] } },
+  \"rules\": [
+    { \"type\": \"deletion\" },
+    { \"type\": \"non_fast_forward\" },
+    { \"type\": \"pull_request\", \"parameters\": {
+        \"required_approving_review_count\": $APPROVALS,
+        \"dismiss_stale_reviews_on_push\": true,
+        \"require_code_owner_review\": false,
+        \"require_last_push_approval\": false,
+        \"required_review_thread_resolution\": false } },
+    { \"type\": \"required_status_checks\", \"parameters\": {
+        \"strict_required_status_checks_policy\": false,
+        \"required_status_checks\": [{ \"context\": \"ci\" }] } }
   ]
-}
-JSON
+}"
 
 # Environments named like the branches (add secrets/variables in the UI afterwards).
 for env in development staging prod; do
   gh api --method PUT "repos/$REPO/environments/$env" >/dev/null
 done
+echo "Environments: development, staging, prod"
 
-echo "Done. Now add the variables and secrets listed in section 8."
+echo "Done. Now add the variables and secrets per environment (see the devops-github-actions skill)."
 ```
 
 ## 6. Angular configurations per environment
