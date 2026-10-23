@@ -97,6 +97,27 @@ await app.RunAsync();
 
 To try protected endpoints from Swagger UI, paste the token into a REST client (`Shop.Api.http`) instead; the built-in OpenAPI document has no security scheme until you add a document transformer for it.
 
+## `src/Shop.Api/Properties/launchSettings.json`
+
+The backend always starts on **https://localhost:5001**. Replace the template's generated profiles (random ports) with one profile; `dotnet run` uses the first profile.
+
+```json
+{
+  "$schema": "https://json.schemastore.org/launchsettings.json",
+  "profiles": {
+    "https": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "launchBrowser": false,
+      "applicationUrl": "https://localhost:5001",
+      "environmentVariables": { "ASPNETCORE_ENVIRONMENT": "Development" }
+    }
+  }
+}
+```
+
+HTTPS only, on purpose: the refresh-token cookie is `Secure`. Trust the ASP.NET Core dev certificate once per machine with `dotnet dev-certs https --trust`.
+
 ## Configuration
 
 During development **all configuration lives in `appsettings.Development.json`** (committed), including the dev signing key and the SQLite connection string. No user secrets. `appsettings.json` holds only non-secret defaults and leaves the production values empty, so a production start without them fails fast (`ValidateOnStart`).
@@ -112,7 +133,7 @@ ASP.NET Core's JSON configuration accepts `//` comments, so the files carry the 
   // PRODUCTION: set ConnectionStrings__Default, Jwt__SigningKey and Cors__Origins via environment variables or a vault.
   "ConnectionStrings": { "Default": "" },
   "Jwt": {
-    "Issuer": "https://localhost",
+    "Issuer": "https://localhost:5001",
     "Audience": "shop-web",
     "SigningKey": "",
     "AccessTokenMinutes": 15,
@@ -132,7 +153,7 @@ ASP.NET Core's JSON configuration accepts `//` comments, so the files carry the 
   // Never reuse this signing key outside development.
   "ConnectionStrings": { "Default": "Data Source=app.db" },
   "Jwt": { "SigningKey": "<random dev key, at least 32 characters, generated per project>" },
-  "Cors": { "Origins": [ "http://localhost:4200" ] }
+  "Cors": { "Origins": [ "https://localhost:4200" ] }
 }
 ```
 
@@ -150,7 +171,7 @@ openssl rand -base64 48
 Replace the template's sample file. Run the requests top to bottom. Named-request syntax (`{{login.response.body.$.accessToken}}`) works in Visual Studio and VS Code REST Client; in Rider, paste the access token from the login response instead.
 
 ```http
-@api = https://localhost:7001/api/v1
+@api = https://localhost:5001/api/v1
 @email = admin@example.com
 @password = Correct-Horse-Battery-1
 
@@ -178,4 +199,4 @@ POST {{api}}/auth/refresh
 POST {{api}}/auth/logout
 ```
 
-Use the port from `Properties/launchSettings.json`. The cookie has `Secure` and `Path=/api/v1/auth`, so call the API over HTTPS for refresh/logout to send it.
+The cookie has `Secure` and `Path=/api/v1/auth`, so refresh/logout only work over HTTPS (which is why the API only listens on https://localhost:5001).

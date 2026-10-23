@@ -84,7 +84,7 @@ export const appConfig: ApplicationConfig = {
 
 ```ts
 export const environment = {
-  apiUrl: 'http://localhost:5000',
+  apiUrl: 'https://localhost:5001', // backend dev URL (launchSettings.json)
   primengLicense: '', // PrimeUI license key. Public by design (verified offline in the browser), not a secret.
 };
 ```

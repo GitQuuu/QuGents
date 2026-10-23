@@ -632,7 +632,7 @@ During development everything lives in `appsettings.Development.json` (committed
   // Never reuse this signing key outside development.
   "ConnectionStrings": { "Default": "Data Source=app.db" },
   "Jwt": { "SigningKey": "<random dev key, at least 32 characters, generated per project>" },
-  "Cors": { "Origins": [ "http://localhost:4200" ] }
+  "Cors": { "Origins": [ "https://localhost:4200" ] }
 }
 ```
 

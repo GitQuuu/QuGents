@@ -123,8 +123,11 @@ npm install primeng @primeuix/themes @angular/cdk tailwindcss @tailwindcss/postc
 npm ci
 npx ng build
 npx ng test --watch=false
+npx ng serve         # https://localhost:4200 (HTTPS needed for the refresh cookie, see dotnet-new-solution)
 npx ng lint          # if configured
 ```
+
+Development URLs: Angular on `https://localhost:4200`, API on `https://localhost:5001` (`environment.apiUrl`).
 
 ## References
 

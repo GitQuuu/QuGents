@@ -19,7 +19,7 @@ dotnet new globaljson --sdk-version 10.0.100 --roll-forward latestFeature   # us
 dotnet new buildprops                                    # Directory.Build.props (shared settings)
 dotnet new packagesprops                                 # Directory.Packages.props (central package versions)
 
-dotnet new webapi --use-controllers -n Shop.Api -o src/Shop.Api
+dotnet new webapi --use-controllers -n Shop.Api -o src/Shop.Api   # then set launchSettings.json to https://localhost:5001
 dotnet new classlib -n Shop.Services -o src/Shop.Services
 dotnet new classlib -n Shop.DataAccess -o src/Shop.DataAccess
 dotnet new nunit -n Shop.Tests -o tests/Shop.Tests
@@ -80,6 +80,8 @@ New solutions start on **SQLite with a local `app.db` file**: no database server
 - Ignore the database files in git: add `*.db`, `*.db-shm` and `*.db-wal` to `.gitignore`.
 
 ```bash
+dotnet dev-certs https --trust   # once per machine: the API runs on https://localhost:5001
+
 # generate the dev signing key for appsettings.Development.json
 openssl rand -base64 48        # PowerShell: [Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(48))
 
@@ -107,14 +109,31 @@ cd web
 npm install primeng @primeuix/themes @angular/cdk tailwindcss @tailwindcss/postcss postcss tailwindcss-primeui
 ```
 
-Then follow the `angular-frontend` skill: `.postcssrc.json`, `src/styles.css`, `providePrimeNG` (with license key), interceptors, `AuthStore` + `provideAppInitializer`, `environment.apiUrl`. Point `environment.apiUrl` at the API's dev URL (`https://localhost:<port>` from `launchSettings.json`) and add the Angular dev origin (`http://localhost:4200`) to the API's `Cors:Origins`.
+Then follow the `angular-frontend` skill: `.postcssrc.json`, `src/styles.css`, `providePrimeNG` (with license key), interceptors, `AuthStore` + `provideAppInitializer`.
+
+**Ports and HTTPS in development:**
+
+| Part | URL |
+|---|---|
+| API | `https://localhost:5001` (`launchSettings.json`) |
+| Angular dev server | `https://localhost:4200` |
+
+- `environment.apiUrl = 'https://localhost:5001'` and `Cors:Origins = ["https://localhost:4200"]` in `appsettings.Development.json`.
+- The Angular dev server must run on HTTPS: with `http://localhost:4200` the browser treats the API as cross-site and never sends the `SameSite=Strict` refresh cookie. Reuse the trusted ASP.NET Core dev certificate:
+
+```bash
+# from web/
+dotnet dev-certs https --export-path ./certs/localhost.pem --format Pem --no-password   # writes localhost.pem + localhost.key
+```
+
+In `angular.json` → `projects.web.architect.serve.options`: `"ssl": true, "sslCert": "certs/localhost.pem", "sslKey": "certs/localhost.key"`. Add `web/certs/` to `.gitignore`.
 
 ## 6. Done when
 
 - `dotnet build` has no warnings (warnings are errors via `Directory.Build.props`) and `dotnet test` is green.
-- `dotnet run` (from `src/Shop.Api`) starts and creates no surprises: `app.db` sits in `src/Shop.Api` and is git-ignored; `/openapi/v1.json` and `/swagger` load in Development.
+- `dotnet run` (from `src/Shop.Api`) listens on **https://localhost:5001**; `app.db` sits in `src/Shop.Api` and is git-ignored; `https://localhost:5001/openapi/v1.json` and `https://localhost:5001/swagger` load.
 - The `Shop.Api.http` requests work in order: register → login (cookie set, access token returned) → a protected endpoint with the token → refresh → logout.
-- `npx ng build` and `npx ng test --watch=false` pass in `web/`.
+- `npx ng build` and `npx ng test --watch=false` pass in `web/`, and `npx ng serve` runs on **https://localhost:4200**.
 - Dev values exist only in `appsettings.Development.json` with the `// DEV ONLY` comment; `appsettings.json` has empty `SigningKey` and connection string.
 
 **Before production** (not part of the bootstrap, but say it in the hand-off): generate a new signing key and set `Jwt__SigningKey`, `ConnectionStrings__Default` and `Cors__Origins` through environment variables or a vault. The dev key in the repo must never be used outside development.
