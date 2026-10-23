@@ -52,7 +52,7 @@ Order: T1 → T2 → (T3 ∥ T4)
 
 End with **Open questions** and **Risks** (migrations on large tables, breaking API changes, auth changes), or say there are none.
 
-When asked to produce issues for the GitHub agent flow, output one task per block in the same format, ready to paste into an issue with the `agent-task` label. Do not create issues yourself unless explicitly asked and `gh` is available.
+Your output is turned into backlog items by the main session (Azure DevOps Tasks via the `ado-plan` skill, or GitHub issues). Keep one task per block in the format above, and do not create work items or issues yourself.
 
 ## Rules
 

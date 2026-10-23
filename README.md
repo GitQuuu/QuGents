@@ -29,6 +29,9 @@ plugins/qugents/
     dotnet-testing/                    NUnit 4, Arrange-Act-Assert, FakeItEasy, test-skabeloner
     angular-frontend/                  Angular 22 + PrimeNG 22 + Tailwind 4 (signals, httpResource, Signal Forms), TS-skabeloner
     secure-code-review/                review-tjekliste .NET + Angular, severity, output-format
+    ado-backlog/                       Azure DevOps (Scrum): typer, felter, tags, WIQL, git/PR-konventioner
+    ado-plan/                          PBI'er tagget agent-plan → child Tasks (agent-proposed)
+    ado-deliver/                       agent-ready Task → holdet → PR linket til Task'en
 ```
 
 ### Agenter
@@ -53,6 +56,9 @@ plugins/qugents/
 | `dotnet-testing` | `/qugents:dotnet-testing` |
 | `angular-frontend` | `/qugents:angular-frontend` |
 | `secure-code-review` | `/qugents:secure-code-review` |
+| `ado-plan` | `/qugents:ado-plan [PBI-id]` |
+| `ado-deliver` | `/qugents:ado-deliver [Task-id]` |
+| `ado-backlog` | (konventioner, hentes af de to ovenfor) |
 
 ## Arbejdsgang med holdet
 
@@ -112,6 +118,44 @@ claude plugin uninstall qugents@qugents
 ```
 
 Uden `--scope` rammer den den globale installation. Kør den, hvis QuGents kun skal være aktiv i de projekter, der selv slår den til. Fra et projekt fjernes den med `claude plugin uninstall qugents@qugents --scope project`.
+
+## Product Owner-flow med Azure DevOps (Scrum)
+
+Du skriver backloggen i Azure DevOps; holdet planlægger, bygger og åbner PR'er. Intet bygges uden dit `agent-ready`, og intet merges uden din godkendelse.
+
+| Trin | Hvem | Hvad |
+|---|---|---|
+| 1 | Dig | Opret en **Product Backlog Item** med Description + Acceptance Criteria. Tag den `agent-plan` |
+| 2 | `/qugents:ado-plan` | planner bryder PBI'en ned i child **Tasks** (`T1 — …`) med kriterier, kontrakt og testcases, tagget `agent-proposed`. PBI'en får `agent-planned` + en kommentar |
+| 3 | Dig | Ret opgaverne til og skift `agent-proposed` → **`agent-ready`** på dem, der må bygges |
+| 4 | `/qugents:ado-deliver` | Tager næste `agent-ready` Task: branch `agent/<id>-…` → fullstack-developer → tester → reviewer (maks 2 rette-runder) → commit med `AB#<id>` → push → PR linket til Task'en. Tags: `agent-working` → `agent-pr-open` |
+| 5 | Dig | Review PR'en (CI grøn), godkend og complete med "Complete associated work items" |
+| — | Ved problemer | Task/PBI får `needs-human` + en kommentar med spørgsmålet eller fejlen |
+
+### Opsætning i projekt-repoet (én gang)
+
+```bash
+# Azure DevOps MCP-server (lokal, Microsofts officielle). Skriver .mcp.json - commit den.
+claude mcp add --scope project --transport stdio azure-devops -- npx -y @azure-devops/mcp <organisation> -d core work work-items repositories
+```
+
+Første gang et værktøj bruges, åbner browseren et Microsoft-login (eller tilføj `--authentication azcli` og brug `az login`). Tilføj så i projektets `CLAUDE.md`:
+
+```markdown
+## Azure DevOps
+- Organization: <organisation>
+- Project: <projekt>
+- Team: <team>
+- Repository: <repo>
+- Default branch: main
+```
+
+Anbefalet i Azure DevOps: branch policy på `main` med påkrævet reviewer (dig) og build validation, så agenternes PR'er altid venter på dig.
+
+### Dagligt
+
+- `/qugents:ado-plan` (eller "planlæg backloggen") → læs opgaverne i Boards → sæt `agent-ready`.
+- `/qugents:ado-deliver` (eller "tag næste opgave") → review PR'en → `/clear` → næste.
 
 ## Opdatering
 
