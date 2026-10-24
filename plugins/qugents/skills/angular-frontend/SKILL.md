@@ -7,6 +7,8 @@ description: Conventions for Angular frontends (v20+, signals, standalone, zonel
 
 Targets current Angular (v22: OnPush by default, zoneless, Signal Forms and `resource`/`httpResource` stable, Vitest as test runner) with PrimeNG 22 and Tailwind CSS 4. **Check `@angular/core`, `primeng` and `tailwindcss` in `package.json` first.** If the project is on an older version or uses other conventions (NgModules, `.component.ts` file names, NgRx, Karma/Jasmine), follow the project and say so. Do not migrate unasked.
 
+**Own repository.** The Angular app lives in its own repository (`<App>-web`, app at the repo root), separate from the .NET backend repo (`<App>`, usually a sibling folder). Frontend changes are committed and opened as pull requests in the frontend repo only. Read the backend repo for the API contract (controllers, DTOs), but never change it from a frontend task.
+
 ## Principles
 
 1. **Thin components.** A component presents and reacts. Data access, validation rules and transformations live in services or plain functions. This mirrors thin controllers on the backend.

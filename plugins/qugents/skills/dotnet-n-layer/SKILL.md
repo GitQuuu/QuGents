@@ -31,7 +31,7 @@ The backend is a JSON Web API and nothing else. All UI lives in the separate Ang
 <App>.Packages      optional: central NuGet references (or Directory.Packages.props)
 <App>.Tests         mirrors the Services modules
 
-web/ (or <App>.Web) Angular app: separate project, talks to <App>.Api over HTTP only
+<App>-web           Angular app in its own repository, talks to <App>.Api over HTTP only
 ```
 
 Call chain: `Controller → I<Name>Bll → I<Name>Service → IUnitOfWork → repository → DbContext`.

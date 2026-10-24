@@ -16,10 +16,13 @@ Read the `## Azure DevOps` section of the repo's `CLAUDE.md`:
 - Organization: contoso
 - Project: Pos
 - Team: Pos Team
-- Code host: GitHub            (or: Azure Repos)
-- Repository: GitQuuu/Pos      (GitHub owner/repo, or the Azure Repos name)
+- Code host: GitHub                                   (or: Azure Repos)
+- Backend repository: GitQuuu/Pos (local: .)
+- Frontend repository: GitQuuu/Pos-web (local: ../Pos-web)
 - Integration branch: development
 ```
+
+Backend (.NET API) and frontend (Angular) are **separate repositories**. `local:` is the folder relative to the repo whose `CLAUDE.md` you are reading; put the same section in both repos' `CLAUDE.md` with paths relative to each. Start Claude Code in the backend repo and give it access to the frontend folder (`claude --add-dir ../Pos-web`, or `"permissions": {"additionalDirectories": ["../Pos-web"]}` in `.claude/settings.json`). A project with only one repository uses `- Repository: <owner>/<repo>` instead.
 
 If the section is missing, ask the user once for these values and add the section to `CLAUDE.md`.
 
@@ -51,7 +54,7 @@ Git (branches, commits, push) is done with the local `git` CLI, using the user's
 |---|---|---|
 | Goal | Epic / Feature | PO |
 | What to build | **Product Backlog Item (PBI)**: Description + **Acceptance Criteria** | PO |
-| How to build it | **Task** (child of the PBI): one vertical slice, one pull request | planner (agents) |
+| How to build it | **Task** (child of the PBI): one use case in **one repository**, one pull request. Title `T<n> — API: …` or `T<n> — Web: …`, tag `repo-api` or `repo-web` | planner (agents) |
 
 Fields used:
 
@@ -78,6 +81,7 @@ Tasks have no acceptance-criteria field, so their criteria go in the Description
 | `agent-working` | agent | Claimed; a team run is in progress |
 | `agent-pr-open` | agent | Pull request open, waiting for PO review/merge |
 | `needs-human` | agent | Blocked: question, failed build, or failed review. See the latest comment |
+| `repo-api` / `repo-web` | agent, on new Tasks | Which repository the task changes (backend / frontend). Set at planning, never removed |
 
 Rules:
 - Change tags by editing `System.Tags` as a whole: read the current value, add/remove tags, write it back. Keep tags the PO added.
@@ -109,11 +113,12 @@ WHERE [System.TeamProject] = @project
 ORDER BY [System.Id] ASC
 ```
 
-Pick order among ready tasks: the parent PBI's `BacklogPriority` first, then the `T<n>` number in the title. Skip a task whose predecessor tasks are not Done (or not at least `agent-pr-open` if the PO has said stacking is fine).
+Pick order among ready tasks: the parent PBI's `BacklogPriority` first, then the `T<n>` number in the title. Skip a task whose predecessor tasks are not Done (or not at least `agent-pr-open` if the PO has said stacking is fine). A Web task therefore waits until the API task it depends on is merged.
 
 ## Git and pull request conventions
 
-- Branch: `agent/<taskId>-<short-slug>` from an up-to-date integration branch (`git switch development && git pull`).
+- Work in the task's repository (`repo-api` → backend, `repo-web` → frontend; local folder from the settings). Branch, commit, push and PR all happen there.
+- Branch: `agent/<taskId>-<short-slug>` from an up-to-date integration branch (`git -C <repo> switch development && git -C <repo> pull`).
 - Commits: imperative subject, then a line `AB#<taskId>` so Azure Boards links the commit.
 - Never commit to or push `development`, `staging` or `prod`. Never force-push someone else's branch.
 - PR title: `AB#<taskId> <task title>`. Target: `development`, never `staging` or `prod`. Description:
@@ -123,7 +128,7 @@ Pick order among ready tasks: the parent PBI's `BacklogPriority` first, then the
 <2–4 bullets from the developer hand-off>
 
 ## How to test
-<steps; URLs https://localhost:5001 / https://localhost:4200>
+<steps; API https://localhost:5001, Angular https://localhost:4200 (a Web task needs the backend repo running)>
 
 ## Tests
 <tester report: added tests, result>
@@ -134,7 +139,7 @@ Pick order among ready tasks: the parent PBI's `BacklogPriority` first, then the
 Fixes AB#<taskId>
 ```
 
-(`Fixes AB#` closes the task when the PR is merged into the default branch `development`: Azure Boards GitHub app on GitHub, "Complete associated work items" on Azure Repos.)
+(`Fixes AB#` closes the task when the PR is merged into the default branch `development`: Azure Boards GitHub app on GitHub, connected to **both** repos; "Complete associated work items" on Azure Repos.)
 
 - The task is linked through `workItems` on create (and `AB#<id>` in the description).
 - The agents never approve, vote on, set auto-complete, bypass policies on, complete or merge pull requests (`vote`, `autoComplete`, `bypassPolicy` are off-limits).

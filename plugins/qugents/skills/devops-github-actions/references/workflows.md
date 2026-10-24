@@ -1,21 +1,33 @@
 # Workflow and setup templates
 
-Validated with `actionlint` (incl. shellcheck). Replace `Shop.Api`, `web` and paths with the project's names. Action versions are current majors at the time of writing; pin to a commit SHA if the repo's policy requires it.
+Validated with `actionlint` (incl. shellcheck). Action versions are current majors at the time of writing; pin to a commit SHA if the repo's policy requires it.
+
+**Two repositories.** The backend and the frontend live in separate repositories, e.g. `GitQuuu/Shop` (.NET solution) and `GitQuuu/Shop-web` (Angular app at the repo root). Each repo has its own workflows, and both use the same three branches, rulesets and environment names. Replace `Shop.Api`, `shop-web` and paths with the project's names.
+
+| File | Backend repo | Frontend repo |
+|---|---|---|
+| `.github/workflows/ci.yml` | section 1 | section 3 |
+| `.github/workflows/deploy.yml` | section 2 | section 4 |
+| `.github/workflows/release-pr.yml` | section 5 | section 5 |
+| `.github/workflows/back-merge.yml` | section 6 | section 6 |
+| `scripts/setup-github-repo.sh` + `.cmd` + `.gitattributes` | section 7 | section 7 |
 
 ## Contents
 
-1. `ci.yml`
-2. `deploy.yml` (Azure or MonsterASP)
-3. `release-pr.yml`
-4. `back-merge.yml`
-5. Repo setup script: branches, default branch, rulesets, environments
-6. Angular build configurations per environment
-7. SPA fallback files (`web.config` for MonsterASP, `staticwebapp.config.json` for Azure)
-8. GitHub Environments checklist
+1. Backend `ci.yml`
+2. Backend `deploy.yml` (Azure App Service or MonsterASP)
+3. Frontend `ci.yml`
+4. Frontend `deploy.yml` (Azure Static Web Apps or MonsterASP)
+5. `release-pr.yml` (both repos)
+6. `back-merge.yml` (both repos)
+7. Repo setup script (both repos): branches, default branch, rulesets, environments
+8. Angular build configurations per environment
+9. SPA fallback files (`web.config` for MonsterASP, `staticwebapp.config.json` for Azure)
+10. GitHub Environments checklist (per repo)
 
 ---
 
-## 1. `.github/workflows/ci.yml`
+## 1. Backend repo: `.github/workflows/ci.yml`
 
 ```yaml
 name: ci
@@ -41,22 +53,9 @@ jobs:
       - run: dotnet restore
       - run: dotnet build --no-restore -c Release
       - run: dotnet test --no-build -c Release
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: npm
-          cache-dependency-path: web/package-lock.json
-
-      - run: npm ci
-        working-directory: web
-      - run: npx ng build --configuration production
-        working-directory: web
-      - run: npx ng test --watch=false
-        working-directory: web
 ```
 
-## 2. `.github/workflows/deploy.yml`
+## 2. Backend repo: `.github/workflows/deploy.yml`
 
 ```yaml
 name: deploy
@@ -92,16 +91,6 @@ jobs:
           global-json-file: global.json
       - run: dotnet publish "src/${{ vars.API_PROJECT }}" -c Release -o publish/api
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: npm
-          cache-dependency-path: web/package-lock.json
-      - run: npm ci
-        working-directory: web
-      - run: npx ng build --configuration "${{ vars.NG_CONFIGURATION }}"
-        working-directory: web
-
       - uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
@@ -114,7 +103,96 @@ jobs:
           app-name: ${{ vars.AZURE_WEBAPP_NAME }}
           package: publish/api
 
-      - name: Deploy Angular to Static Web Apps
+  deploy-monsterasp:
+    needs: ci
+    if: vars.DEPLOY_TARGET == 'monsterasp'
+    runs-on: windows-latest                # Web Deploy (msdeploy) needs Windows
+    environment: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - run: dotnet publish "src/${{ vars.API_PROJECT }}" -c Release -r win-x86 --self-contained false -o publish/api
+
+      - name: Deploy API (Web Deploy)
+        uses: rasmusbuchholdt/simply-web-deploy@2.2.0
+        with:
+          website-name: ${{ secrets.MONSTERASP_API_SITE }}
+          server-computer-name: ${{ secrets.MONSTERASP_API_SERVER }}
+          server-username: ${{ secrets.MONSTERASP_API_USERNAME }}
+          server-password: ${{ secrets.MONSTERASP_API_PASSWORD }}
+          source-path: '\publish\api\'
+```
+
+## 3. Frontend repo: `.github/workflows/ci.yml`
+
+The Angular app sits at the repo root (`package.json`, `angular.json`).
+
+```yaml
+name: ci
+
+on:
+  pull_request:
+    branches: [development, staging, prod]
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - run: npm ci
+      - run: npx ng build --configuration production
+      - run: npx ng test --watch=false
+```
+
+## 4. Frontend repo: `.github/workflows/deploy.yml`
+
+```yaml
+name: deploy
+
+on:
+  push:
+    branches: [development, staging, prod]
+
+concurrency:
+  group: deploy-${{ github.ref_name }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  deploy-azure:
+    needs: ci
+    if: vars.DEPLOY_TARGET == 'azure'
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npx ng build --configuration "${{ vars.NG_CONFIGURATION }}"
+
+      - name: Deploy to Static Web Apps
         uses: Azure/static-web-apps-deploy@v1
         with:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
@@ -131,34 +209,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-dotnet@v4
-        with:
-          global-json-file: global.json
-      - run: dotnet publish "src/${{ vars.API_PROJECT }}" -c Release -r win-x86 --self-contained false -o publish/api
-
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
           cache: npm
-          cache-dependency-path: web/package-lock.json
       - run: npm ci
-        working-directory: web
       - run: npx ng build --configuration "${{ vars.NG_CONFIGURATION }}"
-        working-directory: web
       - name: Collect Angular build
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force publish/web | Out-Null
           Copy-Item -Recurse -Force "${{ vars.WEB_DIST }}/*" publish/web
-
-      - name: Deploy API (Web Deploy)
-        uses: rasmusbuchholdt/simply-web-deploy@2.2.0
-        with:
-          website-name: ${{ secrets.MONSTERASP_API_SITE }}
-          server-computer-name: ${{ secrets.MONSTERASP_API_SERVER }}
-          server-username: ${{ secrets.MONSTERASP_API_USERNAME }}
-          server-password: ${{ secrets.MONSTERASP_API_PASSWORD }}
-          source-path: '\publish\api\'
 
       - name: Deploy Angular (Web Deploy)
         uses: rasmusbuchholdt/simply-web-deploy@2.2.0
@@ -170,9 +231,11 @@ jobs:
           source-path: '\publish\web\'
 ```
 
-## 3. `.github/workflows/release-pr.yml`
+**Release order:** the frontend in an environment calls the API in the same environment. Promote the backend repo first, then the frontend repo, and keep a breaking API change behind a new API version until the frontend that uses it is released.
 
-Run it from the Actions tab ("Run workflow" → target `staging` or `prod`). It needs the `BOT_TOKEN` secret (the bot identity's token): pull requests created with the built-in `GITHUB_TOKEN` do not trigger `ci`, so they could never pass the required check.
+## 5. Both repos: `.github/workflows/release-pr.yml`
+
+Run it from the Actions tab ("Run workflow" → target `staging` or `prod`), backend repo first, then frontend repo. It needs the `BOT_TOKEN` secret (the bot identity's token): pull requests created with the built-in `GITHUB_TOKEN` do not trigger `ci`, so they could never pass the required check.
 
 ```yaml
 name: release-pr
@@ -221,7 +284,7 @@ jobs:
           fi
 ```
 
-## 4. `.github/workflows/back-merge.yml`
+## 6. Both repos: `.github/workflows/back-merge.yml`
 
 ```yaml
 name: back-merge
@@ -258,7 +321,9 @@ jobs:
           fi
 ```
 
-## 5. Repo setup (once, with an admin token; safe to re-run)
+## 7. Both repos: repo setup (once per repo, with an admin token; safe to re-run)
+
+Run it in the backend repo and in the frontend repo (`scripts\setup-github-repo.cmd GitQuuu/Shop` and `... GitQuuu/Shop-web`).
 
 `scripts/setup-github-repo.sh`:
 
@@ -380,11 +445,11 @@ Add `.gitattributes` so the bash script keeps LF line endings on Windows (CRLF b
 *.cmd text eol=crlf
 ```
 
-## 6. Angular configurations per environment
+## 8. Frontend repo: Angular configurations per environment
 
-`web/src/environments/`: `environment.ts` (local dev), `environment.dev.ts`, `environment.staging.ts`, `environment.prod.ts`, each with its own `apiUrl` (e.g. `https://shop-api-staging.azurewebsites.net`).
+`src/environments/`: `environment.ts` (local dev), `environment.dev.ts`, `environment.staging.ts`, `environment.prod.ts`, each with its own `apiUrl` (e.g. `https://shop-api-staging.azurewebsites.net`).
 
-In `angular.json` → `projects.web.architect.build.configurations`, add next to the generated `production`:
+In `angular.json` → `projects.shop-web.architect.build.configurations`, add next to the generated `production`:
 
 ```json
 "dev":     { "fileReplacements": [{ "replace": "src/environments/environment.ts", "with": "src/environments/environment.dev.ts" }] },
@@ -393,7 +458,7 @@ In `angular.json` → `projects.web.architect.build.configurations`, add next to
 
 and give `production` the replacement with `environment.prod.ts`. GitHub environment variable `NG_CONFIGURATION` selects the configuration (`dev`, `staging`, `production`).
 
-## 7. SPA fallback files (put both in `web/public/`, Angular copies them into the build)
+## 9. Frontend repo: SPA fallback files (put both in `public/`, Angular copies them into the build)
 
 `web.config` (MonsterASP / IIS):
 
@@ -428,16 +493,22 @@ and give `production` the replacement with `environment.prod.ts`. GitHub environ
 }
 ```
 
-## 8. GitHub Environments checklist (`development`, `staging`, `prod`)
+## 10. GitHub Environments checklist (`development`, `staging`, `prod`), per repo
 
-Repo-level:
-- Variables: `DEPLOY_TARGET` (`azure` | `monsterasp`), `API_PROJECT` (e.g. `Shop.Api`), `WEB_DIST` (e.g. `web/dist/web/browser`)
-- Secrets: `BOT_TOKEN` (bot identity, for release/back-merge PRs)
+Both repos:
+- Repo variable `DEPLOY_TARGET` (`azure` | `monsterasp`)
+- Repo secret `BOT_TOKEN` (bot identity, for release/back-merge PRs)
+- `prod` environment: add yourself as required reviewer, so a production deploy waits for a click
 
-Per environment:
-- Variable `NG_CONFIGURATION` (`dev` | `staging` | `production`)
-- `azure`: secrets `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID` (an Entra app registration with a federated credential for `repo:<owner>/<repo>:environment:<env>`), `AZURE_STATIC_WEB_APPS_API_TOKEN`; variable `AZURE_WEBAPP_NAME`
-- `monsterasp`: secrets `MONSTERASP_API_SERVER`, `MONSTERASP_API_SITE`, `MONSTERASP_API_USERNAME`, `MONSTERASP_API_PASSWORD` and the same four `MONSTERASP_WEB_*` for the Angular site (each from that site's *Visual Studio access* card, Web Deploy enabled)
-- `prod`: add yourself as required reviewer on the environment, so a production deploy waits for a click
+**Backend repo** (`GitQuuu/Shop`):
+- Repo variable `API_PROJECT` (e.g. `Shop.Api`)
+- `azure`, per environment: secrets `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID` (an Entra app registration with a federated credential for `repo:<owner>/<repo>:environment:<env>`); variable `AZURE_WEBAPP_NAME`
+- `monsterasp`, per environment: secrets `MONSTERASP_API_SERVER`, `MONSTERASP_API_SITE`, `MONSTERASP_API_USERNAME`, `MONSTERASP_API_PASSWORD` (from the API site's *Visual Studio access* card, Web Deploy enabled)
+- App settings per environment (`Jwt__SigningKey`, `ConnectionStrings__Default`, `Cors__Origins__0` = the frontend's URL in that environment) go in the host's configuration (App Service → Environment variables, MonsterASP control panel), never in the repo or workflow files.
 
-App settings per environment (`Jwt__SigningKey`, `ConnectionStrings__Default`, `Cors__Origins__0`) go in the host's configuration (App Service → Environment variables, MonsterASP control panel), never in the repo or workflow files.
+**Frontend repo** (`GitQuuu/Shop-web`):
+- Repo variable `WEB_DIST` (e.g. `dist/shop-web/browser`)
+- Per environment: variable `NG_CONFIGURATION` (`dev` | `staging` | `production`)
+- `azure`, per environment: secret `AZURE_STATIC_WEB_APPS_API_TOKEN`
+- `monsterasp`, per environment: secrets `MONSTERASP_WEB_SERVER`, `MONSTERASP_WEB_SITE`, `MONSTERASP_WEB_USERNAME`, `MONSTERASP_WEB_PASSWORD` (from the web site's *Visual Studio access* card)
+- The API URL per environment lives in `src/environments/environment.<env>.ts` (section 8), not in secrets.

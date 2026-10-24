@@ -1,13 +1,22 @@
 ---
 name: dotnet-new-solution
-description: Bootstraps a new solution for this stack from scratch with the dotnet and Angular CLIs - Web API (controllers) + Services + DataAccess + NUnit tests, SQLite (app.db) as the starting database, ASP.NET Core Identity with JWT, central package management, development configuration in appsettings.Development.json, and an Angular + PrimeNG + Tailwind app. Use when starting a new project or repo, or when asked how to set one up.
+description: Bootstraps a new solution for this stack from scratch with the dotnet and Angular CLIs - Web API (controllers) + Services + DataAccess + NUnit tests, SQLite (app.db) as the starting database, ASP.NET Core Identity with JWT, central package management, development configuration in appsettings.Development.json, and an Angular + PrimeNG + Tailwind app in its own repository. Use when starting a new project or repo, or when asked how to set one up.
 ---
 
 # New solution: Web API + Identity/JWT + Angular
 
+**Two repositories.** The backend and the frontend never share a repository:
+
+| Repo | Contains | Local folder |
+|---|---|---|
+| `<App>` (e.g. `GitQuuu/Shop`) | the .NET solution (sections 1–4) | `C:\_Github\Shop` |
+| `<App>-web` (e.g. `GitQuuu/Shop-web`) | the Angular app at the repo root (section 5) | `C:\_Github\Shop-web` (sibling folder) |
+
+Create both repos on GitHub (empty, no README) and clone them side by side before you start.
+
 **Start from `dotnet new webapi --use-controllers`, not from an MVC template with Individual auth.** The MVC + Individual template brings cookie authentication, Razor views, Identity UI pages, static files and a `Controller`-based setup that all have to be removed again, and it is easy to leave something behind (cookie schemes, `AddDefaultIdentity`, `_Layout`). The Web API template has nothing to strip; Identity is added with two packages and `AddIdentityCore`, which gives users, roles, password hashing and lockout without cookies or UI. The result is the same as a well-stripped MVC project, minus the cleanup.
 
-Run the commands from the new repo root. Replace `Shop` with the solution name. Commands work in PowerShell and Bash. Requires the .NET 10 SDK and Node 22.22+ (Angular 22).
+Run sections 1–4 from the backend repo root. Replace `Shop` with the solution name. Commands work in PowerShell and Bash. Requires the .NET 10 SDK and Node 22.22+ (Angular 22).
 
 ## 1. Solution and projects
 
@@ -101,11 +110,12 @@ dotnet run
 3. Migrations are provider-specific: delete the `Migrations` folder and create a fresh `Initial` migration (data in `app.db` is not migrated).
 4. The `DateTime`/`decimal` limits above no longer apply.
 
-## 5. Angular app
+## 5. Angular app (frontend repo)
+
+Run from the root of the **frontend repo** (`Shop-web`). The app is created in the repo root, not in a subfolder:
 
 ```bash
-npx @angular/cli@latest new web --style=css --ssr=false --skip-git
-cd web
+npx @angular/cli@latest new shop-web --directory . --style=css --ssr=false --skip-git
 npm install primeng @primeuix/themes @angular/cdk tailwindcss @tailwindcss/postcss postcss tailwindcss-primeui
 ```
 
@@ -122,25 +132,27 @@ Then follow the `angular-frontend` skill: `.postcssrc.json`, `src/styles.css`, `
 - The Angular dev server must run on HTTPS: with `http://localhost:4200` the browser treats the API as cross-site and never sends the `SameSite=Strict` refresh cookie. Reuse the trusted ASP.NET Core dev certificate:
 
 ```bash
-# from web/
+# from the frontend repo root
 dotnet dev-certs https --export-path ./certs/localhost.pem --format Pem --no-password   # writes localhost.pem + localhost.key
 ```
 
-In `angular.json` → `projects.web.architect.serve.options`: `"ssl": true, "sslCert": "certs/localhost.pem", "sslKey": "certs/localhost.key"`. Add `web/certs/` to `.gitignore`.
+In `angular.json` → `projects.shop-web.architect.serve.options`: `"ssl": true, "sslCert": "certs/localhost.pem", "sslKey": "certs/localhost.key"`. Add `certs/` to the frontend repo's `.gitignore`.
+
+Give the frontend repo its own `CLAUDE.md` (stack, commands `npx ng serve` / `npx ng build` / `npx ng test --watch=false`, and the same `## Azure DevOps` section as the backend repo, see the `ado-backlog` skill).
 
 ## 6. Done when
 
 - `dotnet build` has no warnings (warnings are errors via `Directory.Build.props`) and `dotnet test` is green.
 - `dotnet run` (from `src/Shop.Api`) listens on **https://localhost:5001**; `app.db` sits in `src/Shop.Api` and is git-ignored; `https://localhost:5001/openapi/v1.json` and `https://localhost:5001/swagger` load.
 - The `Shop.Api.http` requests work in order: register → login (cookie set, access token returned) → a protected endpoint with the token → refresh → logout.
-- `npx ng build` and `npx ng test --watch=false` pass in `web/`, and `npx ng serve` runs on **https://localhost:4200**.
+- In the frontend repo, `npx ng build` and `npx ng test --watch=false` pass, and `npx ng serve` runs on **https://localhost:4200** and talks to the API on https://localhost:5001.
 - Dev values exist only in `appsettings.Development.json` with the `// DEV ONLY` comment; `appsettings.json` has empty `SigningKey` and connection string.
 
 **Before production** (not part of the bootstrap, but say it in the hand-off): generate a new signing key and set `Jwt__SigningKey`, `ConnectionStrings__Default` and `Cors__Origins` through environment variables or a vault. The dev key in the repo must never be used outside development.
 
 ## 7. Branches and CI/CD
 
-After the first commit, hand over to the `devops` agent (skill `devops-github-actions`): it creates `development`/`staging`/`prod`, sets `development` as default branch, adds the CI, deploy, release and back-merge workflows plus the ruleset, and lists the secrets/variables to create per environment.
+After the first commit in each repo, hand over to the `devops` agent (skill `devops-github-actions`): in **both** repos it creates `development`/`staging`/`prod`, sets `development` as default branch, adds the backend or frontend variant of the CI and deploy workflows, the release and back-merge workflows and the rulesets, and lists the secrets/variables to create per repo and environment.
 
 If the repo starts from the `ai-agent-dotnet-template`, apply the same structure inside it instead of creating a new solution file.
 

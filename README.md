@@ -42,7 +42,7 @@ plugins/qugents/
 |---|---|---|---|---|
 | `qugents:planner` | Bryder en epic/feature ned i opgaver | Nej | dotnet-n-layer, angular-frontend | sonnet |
 | `qugents:architecture` | Placering, lag, DI, udskillelse af moduler | Nej | dotnet-n-layer | claude-opus-5-5 |
-| `qugents:fullstack-developer` | Bygger én opgave fra database til UI | Ja | dotnet-n-layer, angular-frontend | inherit (sessionens model) |
+| `qugents:fullstack-developer` | Bygger én opgave i ét repo (API eller Web) | Ja | dotnet-n-layer, angular-frontend | inherit (sessionens model) |
 | `qugents:tester` | Skriver og kører tests, finder huller | Kun testkode | dotnet-testing | sonnet |
 | `qugents:reviewer` | Verdict + fund efter alvor | Nej | secure-code-review | sonnet |
 | `qugents:devops` | CI/CD, branches, environments, release-PR'er | Ja (workflows/scripts) | devops-github-actions | sonnet |
@@ -63,6 +63,17 @@ plugins/qugents/
 | `ado-deliver` | `/qugents:ado-deliver [Task-id]` |
 | `ado-backlog` | (konventioner, hentes af de to ovenfor) |
 | `devops-github-actions` | `/qugents:devops-github-actions` |
+
+## To repos: backend og frontend
+
+Backend (.NET Web API) og frontend (Angular) ligger altid i hvert sit repo, som søskende-mapper:
+
+| Repo | Indhold | Eksempel |
+|---|---|---|
+| `<App>` | .NET-solution (API, Services, DataAccess, Tests) | `C:\_Github\Pos` |
+| `<App>-web` | Angular + PrimeNG + Tailwind i repo-roden | `C:\_Github\Pos-web` |
+
+En opgave hører altid til ét repo, så én opgave er én PR. En feature bliver typisk til to opgaver: `T1 — API: …` (endpoint) og `T2 — Web: …` (skærm), hvor T2 afhænger af T1. Begge repos har samme branches, rulesets og environments, og hver sine CI/deploy-workflows. Ved release går backend først.
 
 ## Arbejdsgang med holdet
 
@@ -130,20 +141,25 @@ Du skriver backloggen i Azure DevOps; holdet planlægger, bygger og åbner PR'er
 | Trin | Hvem | Hvad |
 |---|---|---|
 | 1 | Dig | Opret en **Product Backlog Item** med Description + Acceptance Criteria. Tag den `agent-plan` |
-| 2 | `/qugents:ado-plan` | planner bryder PBI'en ned i child **Tasks** (`T1 — …`) med kriterier, kontrakt og testcases, tagget `agent-proposed`. PBI'en får `agent-planned` + en kommentar |
+| 2 | `/qugents:ado-plan` | planner bryder PBI'en ned i child **Tasks** (`T1 — API: …`, `T2 — Web: …`) med kriterier, kontrakt og testcases, tagget `agent-proposed` og `repo-api` eller `repo-web`. PBI'en får `agent-planned` + en kommentar |
 | 3 | Dig | Ret opgaverne til og skift `agent-proposed` → **`agent-ready`** på dem, der må bygges |
-| 4 | `/qugents:ado-deliver` | Tager næste `agent-ready` Task: branch `agent/<id>-…` → fullstack-developer → tester → reviewer (maks 2 rette-runder) → commit med `AB#<id>` → push → PR til `development` med `Fixes AB#<id>`. Tags: `agent-working` → `agent-pr-open` |
+| 4 | `/qugents:ado-deliver` | Tager næste `agent-ready` Task og arbejder i dens repo: branch `agent/<id>-…` → fullstack-developer → tester → reviewer (maks 2 rette-runder) → commit med `AB#<id>` → push → PR til `development` med `Fixes AB#<id>`. Tags: `agent-working` → `agent-pr-open` |
 | 5 | Dig | Review PR'en (CI grøn), godkend og complete med "Complete associated work items" |
 | — | Ved problemer | Task/PBI får `needs-human` + en kommentar med spørgsmålet eller fejlen |
 
-### Opsætning i projekt-repoet (én gang)
+### Opsætning (én gang)
+
+Kør i **backend-repoet**. Claude Code startes altid derfra, med adgang til frontend-mappen:
 
 ```bash
 # Azure DevOps MCP-server (lokal, Microsofts officielle). Skriver .mcp.json - commit den.
-claude mcp add --scope project --transport stdio azure-devops -- npx -y @azure-devops/mcp <organisation> -d core work work-items repositories
+# På Windows (cmd/PowerShell): erstat "npx" med "cmd /c npx".
+claude mcp add --scope project --transport stdio azure-devops -- npx -y @azure-devops/mcp <organisation> -d core work work-items
 ```
 
-Første gang et værktøj bruges, åbner browseren et Microsoft-login (eller tilføj `--authentication azcli` og brug `az login`). Tilføj så i projektets `CLAUDE.md`:
+Giv Claude Code adgang til frontend-repoet: start med `claude --add-dir ../<App>-web`, eller læg `"permissions": { "additionalDirectories": ["../<App>-web"] }` i backend-repoets `.claude/settings.json`.
+
+Første gang et værktøj bruges, åbner browseren et Microsoft-login (eller tilføj `--authentication azcli` og brug `az login`). Tilføj så i begge repos' `CLAUDE.md` (stierne er relative til det repo, filen ligger i):
 
 ```markdown
 ## Azure DevOps
@@ -151,11 +167,12 @@ Første gang et værktøj bruges, åbner browseren et Microsoft-login (eller til
 - Project: <projekt>
 - Team: <team>
 - Code host: GitHub
-- Repository: <owner>/<repo>
+- Backend repository: <owner>/<App> (local: .)
+- Frontend repository: <owner>/<App>-web (local: ../<App>-web)
 - Integration branch: development
 ```
 
-Branches: `development` (default, agenternes PR'er) → `staging` → `prod`. devops-agenten sætter rulesets op: kun `prod` kræver PR (med grøn `ci`), og ingen af de tre branches kan slettes eller force-pushes. Agenterne leverer stadig altid via PR'er mod `development`, så de venter på dig. Giv agenterne deres egen GitHub-identitet (GitHub App eller maskinbruger), da GitHub ikke lader dig godkende dine egne PR'er. Installér Azure Boards-appen på GitHub-repoet, så `Fixes AB#<id>` lukker Task'en ved merge.
+Branches i begge repos: `development` (default, agenternes PR'er) → `staging` → `prod`. devops-agenten sætter rulesets op: kun `prod` kræver PR (med grøn `ci`), og ingen af de tre branches kan slettes eller force-pushes. Agenterne leverer stadig altid via PR'er mod `development`, så de venter på dig. Giv agenterne deres egen GitHub-identitet (GitHub App eller maskinbruger), da GitHub ikke lader dig godkende dine egne PR'er. Installér Azure Boards-appen på begge GitHub-repos, så `Fixes AB#<id>` lukker Task'en ved merge.
 
 ### Dagligt
 

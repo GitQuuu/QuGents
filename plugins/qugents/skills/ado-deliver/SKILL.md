@@ -14,29 +14,30 @@ Input: a Task id (`/qugents:ado-deliver 456`) or nothing (= the next ready task)
 - With an id: read it and verify it is a Task tagged `agent-ready` in state To Do. If not, stop and say why.
 - Without an id: run the "Tasks ready to build" WIQL, apply the pick order and dependency rule from `ado-backlog`, take the first one. If none: tell the user and stop.
 - Read the task (description = the spec), its parent PBI (title, description, acceptance criteria) and comments.
-- The working tree must be clean (`git status`). If not, stop and ask the user.
+- **Pick the repository**: tag `repo-api` → backend repo, `repo-web` → frontend repo (fallback: the `API:`/`Web:` title prefix). Resolve its local folder from the settings; below, `<repo>` is that folder. If the tag is missing or the folder does not exist, stop and ask.
+- The working tree of `<repo>` must be clean (`git -C <repo> status`). If not, stop and ask the user.
 
 ## 2. Claim
 
 - Tags: remove `agent-ready`, add `agent-working`. State: In Progress.
 - Comment: `Agent started on this task (branch agent/<id>-<slug>).`
-- `git switch development && git pull && git switch -c agent/<id>-<slug>` (the integration branch from `CLAUDE.md`)
+- `git -C <repo> switch development && git -C <repo> pull && git -C <repo> switch -c agent/<id>-<slug>` (the integration branch from `CLAUDE.md`)
 
 ## 3. Build with the team
 
-1. **Developer.** Spawn `qugents:fullstack-developer` with the task title, the full task description, the parent PBI's acceptance criteria, and: "Implement exactly this task. Do not commit."
-2. **Tester.** Spawn `qugents:tester` with the task spec, the developer's hand-off (including "For the tester") and: "Write and run the tests for this change. Do not commit."
-3. **Reviewer.** Spawn `qugents:reviewer` with the task spec and: "Review the uncommitted changes against the integration branch (git diff)."
+1. **Developer.** Spawn `qugents:fullstack-developer` with the task title, the full task description, the parent PBI's acceptance criteria, and: "This is an API|Web task. Work only in <repo> (you may read the other repo). Implement exactly this task. Do not commit."
+2. **Tester.** Spawn `qugents:tester` with the task spec, the developer's hand-off (including "For the tester") and: "Work only in <repo>. Write and run the tests for this change. Do not commit."
+3. **Reviewer.** Spawn `qugents:reviewer` with the task spec and: "Review the uncommitted changes in <repo> against the integration branch (git -C <repo> diff)."
 4. **Fix loop (max 2 rounds).** If the tester reports bugs or the reviewer says *Request changes*: send the findings (Blockers and Majors only) to `qugents:fullstack-developer` to fix, then run tester and reviewer again. Structural findings may be checked with `qugents:architecture` first.
 5. If it is still not green after 2 rounds, or the developer stops with a question: go to **Blocked**.
 
-Before committing, run `dotnet build`, `dotnet test` and (if the frontend changed) `npx ng build` / `npx ng test --watch=false` yourself, and check that no secrets or `app.db` files are staged.
+Before committing, verify in `<repo>` yourself: API task `dotnet build` + `dotnet test`; Web task `npx ng build` + `npx ng test --watch=false`. Check that no secrets, `app.db` or `certs/` files are staged, and that the other repo has no changes.
 
 ## 4. Pull request
 
-- `git add` the changed files, commit (`<imperative summary>` + blank line + `AB#<id>`), `git push -u origin agent/<id>-<slug>`.
+- In `<repo>`: `git add` the changed files, commit (`<imperative summary>` + blank line + `AB#<id>`), `git push -u origin agent/<id>-<slug>`.
 - Open the PR to `development` with the title and description template from `ado-backlog`:
-  - **GitHub:** `gh pr create --base development --head agent/<id>-<slug> --title "AB#<id> <title>" --body-file <file>`.
+  - **GitHub:** `gh pr create --repo <owner/repo of the task's repository> --base development --head agent/<id>-<slug> --title "AB#<id> <title>" --body-file <file>`.
   - **Azure Repos:** `repo_pull_request_write create` with `sourceRefName: refs/heads/agent/<id>-<slug>`, `targetRefName: refs/heads/development`, `workItems: "<id>"`.
   Not a draft. Never target `staging` or `prod`.
 - Tags: remove `agent-working`, add `agent-pr-open`. Leave the state In Progress (`Fixes AB#<id>` closes it when the PO merges the PR).

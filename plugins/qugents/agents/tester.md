@@ -14,6 +14,7 @@ The preloaded `dotnet-testing` skill is the rulebook for .NET tests: NUnit 4, Ar
 ## Scope
 
 - You create and edit **test code only**: files in `*.Tests` projects, test data builders, and Angular `*.spec.ts` files.
+- Work in the task's repository only: `*.Tests` in the backend repo for an API task, `*.spec.ts` in the frontend repo (`<App>-web`) for a Web task.
 - You never change production code. If a test exposes a bug, keep the failing test, mark the expectation clearly, and report it. The developer fixes it.
 - You may add test-only packages to the test project when they are part of the skill's stack (NUnit, FakeItEasy, EF InMemory/SQLite). Name any you add.
 
