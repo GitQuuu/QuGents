@@ -260,7 +260,7 @@ jobs:
 
 ## 5. Repo setup (once, with an admin token; safe to re-run)
 
-`scripts/setup-github-repo.sh` (on Windows run it from Git Bash: `bash scripts/setup-github-repo.sh <owner/repo>`):
+`scripts/setup-github-repo.sh`:
 
 ```bash
 #!/usr/bin/env bash
@@ -351,6 +351,33 @@ done
 echo "Environments: development, staging, prod"
 
 echo "Done. Now add the variables and secrets per environment (see the devops-github-actions skill)."
+```
+
+On Windows the same script runs from cmd through a small wrapper, `scripts/setup-github-repo.cmd` (CRLF):
+
+```bat
+@echo off
+rem Runs setup-github-repo.sh with Git for Windows' bash, so it also works from cmd.
+rem Usage (from the repo root): scripts\setup-github-repo.cmd ^<owner/repo^> [prod-approvals]
+setlocal
+set "GITBASH=%ProgramFiles%\Git\bin\bash.exe"
+if exist "%GITBASH%" goto run
+for /f "delims=" %%G in ('where git 2^>nul') do if exist "%%~dpG..\bin\bash.exe" set "GITBASH=%%~dpG..\bin\bash.exe"
+if not exist "%GITBASH%" (
+  echo Could not find bash.exe from Git for Windows. 1>&2
+  exit /b 1
+)
+:run
+"%GITBASH%" "%~dp0setup-github-repo.sh" %*
+exit /b %ERRORLEVEL%
+```
+
+Add `.gitattributes` so the bash script keeps LF line endings on Windows (CRLF breaks it with `$'\r': command not found`):
+
+```gitattributes
+* text=auto
+*.sh text eol=lf
+*.cmd text eol=crlf
 ```
 
 ## 6. Angular configurations per environment
