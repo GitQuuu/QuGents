@@ -89,18 +89,35 @@ Eksempel i Claude Code:
 
 Hovedagenten (din session) styrer rækkefølgen. Hver agent starter i en frisk kontekst og returnerer et resumé, så tester og reviewer ser koden med friske øjne.
 
-## Installation
+## Installation i Claude Code
 
-### Pr. projekt (følger med repoet)
+QuGents er et plugin til **Claude Code** (CLI'en `claude`). Kommandoerne virker i cmd, PowerShell og bash.
 
-Kør i projektets rodmappe:
+### Forudsætninger
 
-```bash
-claude plugin marketplace add GitQuuu/QuGents --scope project
-claude plugin install qugents@qugents --scope project
-```
+- Claude Code installeret og logget ind: kør `claude` én gang og log ind, hvis den beder om det.
+- Git og adgang til github.com (QuGents hentes derfra).
 
-Det skriver `.claude/settings.json`. Commit den, så får kollegaer og CI også QuGents, og andre projekter påvirkes ikke. Første gang en kollega åbner projektet, skal mappen godkendes som betroet, før pluginet hentes.
+### Trin for trin (pr. projekt, anbefalet)
+
+1. Åbn en terminal i projektets rodmappe (ved to repos: **backend-repoet**, det er der Claude Code startes).
+2. Tilføj marketplacen og installér pluginet:
+
+   ```bash
+   claude plugin marketplace add GitQuuu/QuGents --scope project
+   claude plugin install qugents@qugents --scope project
+   ```
+
+   Siger `marketplace add`, at den allerede findes, så kør `claude plugin marketplace update qugents` og fortsæt med `install`.
+3. Tjek installationen:
+
+   ```bash
+   claude plugin list
+   ```
+
+   `qugents@qugents` skal stå som **enabled**.
+4. Start Claude Code (`claude`) og skriv `/qugents:`. Du skal se `ado-plan`, `ado-deliver`, `dotnet-n-layer` osv. Agenterne ses med `/agents` (fx `qugents:planner`).
+5. Commit `.claude/settings.json`, så projektet husker, at det bruger QuGents.
 
 Resultatet i `.claude/settings.json`:
 
@@ -112,6 +129,24 @@ Resultatet i `.claude/settings.json`:
   "enabledPlugins": { "qugents@qugents": true }
 }
 ```
+
+### Ny maskine eller kollega
+
+`.claude/settings.json` i repoet *slår* QuGents til, men pluginet skal stadig *hentes* på hver maskine. Når en mappe åbnes første gang og godkendes som betroet, tilbyder Claude Code normalt at installere det. Kommer der ingen forespørgsel (fx fordi mappen allerede er betroet), så kør trin 2–4 ovenfor. Det er ufarligt at køre dem igen.
+
+### Inde fra Claude Code
+
+Skriv `/plugin` og brug menuen: **Marketplaces → Add** `GitQuuu/QuGents`, derefter **Discover → qugents → Install** og vælg scope. Eller direkte: `/plugin marketplace add GitQuuu/QuGents` og `/plugin install qugents@qugents`. Genstart Claude Code bagefter.
+
+### Fejlfinding
+
+| Symptom | Løsning |
+|---|---|
+| `/qugents:` viser ingenting | Pluginet er ikke hentet på maskinen. Kør trin 2–3, og start `claude` igen |
+| `claude plugin list` viser qugents som disabled | `claude plugin enable qugents@qugents --scope project` |
+| "Marketplace already exists" | `claude plugin marketplace update qugents` |
+| Nye ændringer i QuGents ses ikke | Se **Opdatering** nedenfor, og genstart Claude Code |
+| Install fejler med en politik-/organisationsfejl | Organisationen (Claude Team/Enterprise) tillader ikke eksterne marketplaces. En admin skal godkende `GitQuuu/QuGents` |
 
 ### Kun for dig i ét projekt
 
