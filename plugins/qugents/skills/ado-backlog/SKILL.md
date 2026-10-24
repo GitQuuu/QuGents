@@ -77,7 +77,9 @@ Tasks have no acceptance-criteria field, so their criteria go in the Description
 | `agent-plan` | PO, on a PBI | Please break this PBI into tasks |
 | `agent-planned` | agent, on the PBI | Tasks were created (replaces `agent-plan`) |
 | `agent-proposed` | agent, on new Tasks | Waiting for PO review |
-| `agent-ready` | **PO**, on a Task | Approved for building. The only tag that lets an agent write code |
+| `agent-ready` | **PO**, on a **PBI** | Build the whole PBI: every child Task (except `agent-hold`) is approved, one PR per Task in `T<n>` order. A PBI without Tasks is planned first and then built without a separate task review |
+| `agent-ready` | **PO**, on a Task | Approve just this Task (when the PBI is not `agent-ready`) |
+| `agent-hold` | PO, on a Task | Skip this Task even though its PBI is `agent-ready` |
 | `agent-working` | agent | Claimed; a team run is in progress |
 | `agent-pr-open` | agent | Pull request open, waiting for PO review/merge |
 | `needs-human` | agent | Blocked: question, failed build, or failed review. See the latest comment |
@@ -86,6 +88,7 @@ Tasks have no acceptance-criteria field, so their criteria go in the Description
 Rules:
 - Change tags by editing `System.Tags` as a whole: read the current value, add/remove tags, write it back. Keep tags the PO added.
 - Never add `agent-ready` yourself, never close or delete work items, never change PBI state or fields other than tags.
+- **Approval rule:** an agent may write code for a Task only if the Task is tagged `agent-ready`, **or** its parent PBI is tagged `agent-ready` and the Task is not tagged `agent-hold`. `agent-ready` on a PBI is the PO's approval of all its Tasks, including Tasks the agents create for it.
 - Every agent action on a work item gets a short comment saying what happened and what the PO should do next.
 
 ## WIQL queries
@@ -101,7 +104,20 @@ WHERE [System.TeamProject] = @project
 ORDER BY [Microsoft.VSTS.Common.BacklogPriority] ASC
 ```
 
-Tasks ready to build:
+PBIs approved to build (`agent-ready` on the PBI):
+
+```sql
+SELECT [System.Id] FROM WorkItems
+WHERE [System.TeamProject] = @project
+  AND [System.WorkItemType] = 'Product Backlog Item'
+  AND [System.Tags] CONTAINS 'agent-ready'
+  AND [System.State] <> 'Done'
+ORDER BY [Microsoft.VSTS.Common.BacklogPriority] ASC
+```
+
+Their candidate Tasks: read each PBI with relations (`wit_work_item get`, `expand: relations`) and take the child Tasks in state To Do that are not tagged `agent-hold`, `agent-working`, `agent-pr-open` or `needs-human`.
+
+Tasks approved one by one:
 
 ```sql
 SELECT [System.Id] FROM WorkItems
@@ -113,7 +129,9 @@ WHERE [System.TeamProject] = @project
 ORDER BY [System.Id] ASC
 ```
 
-Pick order among ready tasks: the parent PBI's `BacklogPriority` first, then the `T<n>` number in the title. Skip a task whose predecessor tasks are not Done (or not at least `agent-pr-open` if the PO has said stacking is fine). A Web task therefore waits until the API task it depends on is merged.
+Tasks ready to build = both sets together.
+
+Pick order among ready tasks: finish a PBI before starting the next (the parent PBI's `BacklogPriority` first), then the `T<n>` number in the title. Skip a task whose predecessor tasks are not Done (or not at least `agent-pr-open` if the PO has said stacking is fine). A Web task therefore waits until the API task it depends on is merged.
 
 ## Git and pull request conventions
 

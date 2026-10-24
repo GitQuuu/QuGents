@@ -1,25 +1,26 @@
 ---
 name: ado-deliver
-description: Builds one approved Azure DevOps Task end to end with the agent team - picks the next Task tagged agent-ready (or a given id), claims it, creates a branch, runs fullstack-developer, tester and reviewer, then commits, pushes, opens a linked pull request and updates the work item. Use when the user says take the next task, deliver task 456, work the backlog, or similar.
+description: Builds one approved Azure DevOps Task end to end with the agent team - picks the next approved Task (tagged agent-ready, or a child of a PBI tagged agent-ready), or a given Task or PBI id, claims it, creates a branch, runs fullstack-developer, tester and reviewer, then commits, pushes, opens a linked pull request and updates the work item. Use when the user says take the next task, deliver task 456, work the backlog, or similar.
 ---
 
 # Deliver an approved task
 
 Load the `ado-backlog` skill first: it has the project settings, tools, tags, WIQL and git/PR conventions. This skill runs in the **main session**: it talks to Azure DevOps and git, and orchestrates the agents. The agents themselves never touch Azure DevOps.
 
-Input: a Task id (`/qugents:ado-deliver 456`) or nothing (= the next ready task). One task per run. To do several, run it again after the user has seen the result (ideally after `/clear`).
+Input: a Task id (`/qugents:ado-deliver 456`), a PBI id (`/qugents:ado-deliver 233` = the next Task of that PBI) or nothing (= the next ready task). One task per run, because the next Task builds on the merged result of the previous one: after the PO has merged the PR, run it again (ideally after `/clear`).
 
 ## 1. Pick and check
 
-- With an id: read it and verify it is a Task tagged `agent-ready` in state To Do. If not, stop and say why.
-- Without an id: run the "Tasks ready to build" WIQL, apply the pick order and dependency rule from `ado-backlog`, take the first one. If none: tell the user and stop.
+- With a Task id: read it and check the **approval rule** from `ado-backlog` (Task `agent-ready`, or parent PBI `agent-ready` and Task not `agent-hold`) and state To Do. If not, stop and say why.
+- With a PBI id: the PBI must be tagged `agent-ready`. If it has no child Tasks yet, run the `ado-plan` steps for it first (the PBI's `agent-ready` approves the new Tasks). Then take its first Task by `T<n>` that is To Do, not `agent-hold`, and whose predecessors are Done. If the next Task waits for an open PR, say which PR the PO must merge and stop.
+- Without an id: run the "Tasks ready to build" queries, apply the pick order and dependency rule from `ado-backlog`, take the first one. If none: tell the user and stop.
 - Read the task (description = the spec), its parent PBI (title, description, acceptance criteria) and comments.
 - **Pick the repository**: tag `repo-api` → backend repo, `repo-web` → frontend repo (fallback: the `API:`/`Web:` title prefix). Resolve its local folder from the settings; below, `<repo>` is that folder. If the tag is missing or the folder does not exist, stop and ask.
 - The working tree of `<repo>` must be clean (`git -C <repo> status`). If not, stop and ask the user.
 
 ## 2. Claim
 
-- Tags: remove `agent-ready`, add `agent-working`. State: In Progress.
+- Task tags: remove `agent-ready` / `agent-proposed`, add `agent-working`. State: In Progress. Leave the PBI's `agent-ready` in place until all its Tasks are done.
 - Comment: `Agent started on this task (branch agent/<id>-<slug>).`
 - `git -C <repo> switch development && git -C <repo> pull && git -C <repo> switch -c agent/<id>-<slug>` (the integration branch from `CLAUDE.md`)
 
@@ -51,7 +52,7 @@ Before committing, verify in `<repo>` yourself: API task `dotnet build` + `dotne
 
 ## Finish
 
-Tell the user in a few lines: task id and title, PR link (or why it is blocked), test result, review verdict, anything the PO must decide. Do not start the next task unasked.
+Tell the user in a few lines: task id and title, PR link (or why it is blocked), test result, review verdict, anything the PO must decide. If the Task belongs to a PBI tagged `agent-ready`, also say which Task is next and that it starts when this PR is merged and `/qugents:ado-deliver` is run again. Do not start the next task unasked. When the last Task of the PBI has its PR open, comment on the PBI: `All <n> tasks have pull requests; the PBI is ready for your review.`
 
 ## Rules
 

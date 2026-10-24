@@ -177,8 +177,8 @@ Du skriver backloggen i Azure DevOps; holdet planlægger, bygger og åbner PR'er
 |---|---|---|
 | 1 | Dig | Opret en **Product Backlog Item** med Description + Acceptance Criteria. Tag den `agent-plan` |
 | 2 | `/qugents:ado-plan` | planner bryder PBI'en ned i child **Tasks** (`T1 — API: …`, `T2 — Web: …`) med kriterier, kontrakt og testcases, tagget `agent-proposed` og `repo-api` eller `repo-web`. PBI'en får `agent-planned` + en kommentar |
-| 3 | Dig | Ret opgaverne til og skift `agent-proposed` → **`agent-ready`** på dem, der må bygges |
-| 4 | `/qugents:ado-deliver` | Tager næste `agent-ready` Task og arbejder i dens repo: branch `agent/<id>-…` → fullstack-developer → tester → reviewer (maks 2 rette-runder) → commit med `AB#<id>` → push → PR til `development` med `Fixes AB#<id>`. Tags: `agent-working` → `agent-pr-open` |
+| 3 | Dig | Ret opgaverne til, og sæt **`agent-ready` på PBI'en** for at godkende alle dens Tasks på én gang (tag en Task `agent-hold` for at springe den over). Du kan også sætte `agent-ready` på enkelte Tasks |
+| 4 | `/qugents:ado-deliver` | Tager næste godkendte Task (i `T<n>`-rækkefølge) og arbejder i dens repo: branch `agent/<id>-…` → fullstack-developer → tester → reviewer (maks 2 rette-runder) → commit med `AB#<id>` → push → PR til `development` med `Fixes AB#<id>`. Tags: `agent-working` → `agent-pr-open` |
 | 5 | Dig | Review PR'en (CI grøn), godkend og complete med "Complete associated work items" |
 | — | Ved problemer | Task/PBI får `needs-human` + en kommentar med spørgsmålet eller fejlen |
 
@@ -222,7 +222,8 @@ Branches i begge repos: `development` (default, agenternes PR'er) → `staging` 
 ### Dagligt
 
 - `/qugents:ado-plan` (eller "planlæg backloggen") → læs opgaverne i Boards → sæt `agent-ready`.
-- `/qugents:ado-deliver` (eller "tag næste opgave") → review PR'en → `/clear` → næste.
+- `/qugents:ado-deliver` (eller "tag næste opgave") → review og merge PR'en → `/clear` → `/qugents:ado-deliver` igen, indtil PBI'en er færdig.
+- Stol du på planen fra start? Sæt `agent-ready` direkte på en uplanlagt PBI: holdet planlægger og bygger den uden en separat gennemgang af Tasks.
 
 ## Opdatering
 

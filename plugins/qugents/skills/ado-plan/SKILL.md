@@ -7,7 +7,7 @@ description: Plans Azure DevOps Product Backlog Items for the agent team - reads
 
 Load the `ado-backlog` skill first: it has the project settings, tools, fields, tags and WIQL. This skill runs in the **main session** (it talks to Azure DevOps); the planning itself is done by the `qugents:planner` agent.
 
-Input: a PBI id (`/qugents:ado-plan 123`) or nothing, which means every PBI tagged `agent-plan`.
+Input: a PBI id (`/qugents:ado-plan 123`) or nothing, which means every PBI tagged `agent-plan`, plus PBIs tagged `agent-ready` that have no Tasks yet (those are planned and then built by `ado-deliver` without a separate task review).
 
 ## Steps per PBI
 
@@ -19,11 +19,11 @@ Input: a PBI id (`/qugents:ado-plan 123`) or nothing, which means every PBI tagg
    - Description (Markdown): Repo, Why, Acceptance criteria (Given/When/Then list), Backend or Frontend, API contract, Test cases, Depends on. Keep the planner's content as it is.
    Then one `update_batch` on the new ids: `/fields/System.Tags` = `agent-proposed; repo-api` or `agent-proposed; repo-web` and `/fields/Microsoft.VSTS.Scheduling.RemainingWork` = 2 (S), 4 (M) or 8 (L). `add_child` cannot set these itself.
 5. **Link dependencies.** For "Depends on: T<k>", link the new task to T<k> as successor/predecessor.
-6. **Update the PBI.** Tags: remove `agent-plan`, add `agent-planned`. Comment:
+6. **Update the PBI.** Tags: remove `agent-plan`, add `agent-planned` (keep `agent-ready` if the PO set it). Comment:
 
 ```
 Agent plan: <n> tasks created (T1–T<n>), tagged agent-proposed.
-Next step (PO): review/edit the tasks and change agent-proposed → agent-ready on the ones to build.
+Next step (PO): review/edit the tasks, then tag this PBI agent-ready to build them all (tag a Task agent-hold to skip it), or tag single Tasks agent-ready.
 Open questions: <planner's open questions, or "none">
 Risks: <planner's risks, or "none">
 ```
