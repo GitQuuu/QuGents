@@ -14,6 +14,8 @@ description: Bootstraps a new solution for this stack from scratch with the dotn
 
 Create both repos on GitHub (empty, no README) and clone them side by side before you start.
 
+To work on both in one IDE, **attach** the frontend folder to the backend solution in the IDE (Rider: right-click the solution → *Add* → *Attach Existing Folder*; Visual Studio: *Open Folder* in a second window). Rider keeps this in `.idea/`, so it stays local. Do **not** add the Angular app to the `.slnx` (e.g. as an `.esproj`): the backend CI checks out only the backend repo, so `dotnet restore`/`dotnet build` of the solution would fail on the missing project.
+
 **Start from `dotnet new webapi --use-controllers`, not from an MVC template with Individual auth.** The MVC + Individual template brings cookie authentication, Razor views, Identity UI pages, static files and a `Controller`-based setup that all have to be removed again, and it is easy to leave something behind (cookie schemes, `AddDefaultIdentity`, `_Layout`). The Web API template has nothing to strip; Identity is added with two packages and `AddIdentityCore`, which gives users, roles, password hashing and lockout without cookies or UI. The result is the same as a well-stripped MVC project, minus the cleanup.
 
 Run sections 1–4 from the backend repo root. Replace `Shop` with the solution name. Commands work in PowerShell and Bash. Requires the .NET 10 SDK and Node 22.22+ (Angular 22).
