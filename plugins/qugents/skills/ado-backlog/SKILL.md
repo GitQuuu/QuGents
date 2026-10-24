@@ -80,8 +80,11 @@ Tasks have no acceptance-criteria field, so their criteria go in the Description
 | `agent-ready` | **PO**, on a **PBI** | Build the whole PBI: every child Task (except `agent-hold`) is approved, one PR per Task in `T<n>` order. A PBI without Tasks is planned first and then built without a separate task review |
 | `agent-ready` | **PO**, on a Task | Approve just this Task (when the PBI is not `agent-ready`) |
 | `agent-hold` | PO, on a Task | Skip this Task even though its PBI is `agent-ready` |
+| `agent-no-merge` | PO, on a PBI | Build all Tasks, but let me merge each PR myself (turns off the agent merge) |
 | `agent-working` | agent | Claimed; a team run is in progress |
-| `agent-pr-open` | agent | Pull request open, waiting for PO review/merge |
+| `agent-pr-open` | agent | Pull request open (waiting for CI and verification, or for the PO) |
+| `agent-merged` | agent, on a Task | Verified and merged into `development` by the agents (PBI-approved Tasks only) |
+| `agent-done` | agent, on a PBI | All Tasks merged and the PBI's criteria verified. The PO checks the listed manual items and closes the PBI (replaces `agent-ready`) |
 | `needs-human` | agent | Blocked: question, failed build, or failed review. See the latest comment |
 | `repo-api` / `repo-web` | agent, on new Tasks | Which repository the task changes (backend / frontend). Set at planning, never removed |
 
@@ -160,4 +163,5 @@ Fixes AB#<taskId>
 (`Fixes AB#` closes the task when the PR is merged into the default branch `development`: Azure Boards GitHub app on GitHub, connected to **both** repos; "Complete associated work items" on Azure Repos.)
 
 - The task is linked through `workItems` on create (and `AB#<id>` in the description).
-- The agents never approve, vote on, set auto-complete, bypass policies on, complete or merge pull requests (`vote`, `autoComplete`, `bypassPolicy` are off-limits).
+- The agents never approve, vote on, set auto-complete or bypass policies on pull requests (`vote`, `autoComplete`, `bypassPolicy` are off-limits).
+- **Merging:** a PR is merged by the PO, except for Tasks approved through their PBI's `agent-ready` (and no `agent-no-merge`): `ado-deliver` then squash-merges into `development` after green CI and a PASS from the `verifier` agent. Never into `staging` or `prod`.

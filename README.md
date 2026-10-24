@@ -45,6 +45,7 @@ plugins/qugents/
 | `qugents:fullstack-developer` | Bygger én opgave i ét repo (API eller Web) | Ja | dotnet-n-layer, angular-frontend | inherit (sessionens model) |
 | `qugents:tester` | Skriver og kører tests, finder huller | Kun testkode | dotnet-testing | sonnet |
 | `qugents:reviewer` | Verdict + fund efter alvor | Nej | secure-code-review | sonnet |
+| `qugents:verifier` | Tjekker acceptkriterierne før en agent-merge (PASS/FAIL pr. kriterie) | Nej | dotnet-testing | sonnet |
 | `qugents:devops` | CI/CD, branches, environments, release-PR'er | Ja (workflows/scripts) | devops-github-actions | sonnet |
 
 `model` kan ændres i hver agents frontmatter (`sonnet`, `opus`, `haiku`, `inherit` eller et fuldt model-id som `claude-opus-5-5`).
@@ -178,8 +179,8 @@ Du skriver backloggen i Azure DevOps; holdet planlægger, bygger og åbner PR'er
 | 1 | Dig | Opret en **Product Backlog Item** med Description + Acceptance Criteria. Tag den `agent-plan` |
 | 2 | `/qugents:ado-plan` | planner bryder PBI'en ned i child **Tasks** (`T1 — API: …`, `T2 — Web: …`) med kriterier, kontrakt og testcases, tagget `agent-proposed` og `repo-api` eller `repo-web`. PBI'en får `agent-planned` + en kommentar |
 | 3 | Dig | Ret opgaverne til, og sæt **`agent-ready` på PBI'en** for at godkende alle dens Tasks på én gang (tag en Task `agent-hold` for at springe den over). Du kan også sætte `agent-ready` på enkelte Tasks |
-| 4 | `/qugents:ado-deliver` | Tager næste godkendte Task (i `T<n>`-rækkefølge) og arbejder i dens repo: branch `agent/<id>-…` → fullstack-developer → tester → reviewer (maks 2 rette-runder) → commit med `AB#<id>` → push → PR til `development` med `Fixes AB#<id>`. Tags: `agent-working` → `agent-pr-open` |
-| 5 | Dig | Review PR'en (CI grøn), godkend og complete med "Complete associated work items" |
+| 4 | `/qugents:ado-deliver` | Tager næste godkendte Task (i `T<n>`-rækkefølge) og arbejder i dens repo: branch `agent/<id>-…` → fullstack-developer → tester → reviewer (maks 2 rette-runder) → commit med `AB#<id>` → push → PR til `development` med `Fixes AB#<id>`. **Er PBI'en `agent-ready`:** venter på grøn CI → verifier tjekker acceptkriterierne → squash-merge til `development` → næste Task, indtil PBI'en er færdig (`agent-done`) |
+| 5 | Dig | PBI-godkendt: tjek de manuelle punkter i PBI-kommentaren og luk PBI'en. Task-godkendt eller `agent-no-merge` på PBI'en: review og merge hver PR selv |
 | — | Ved problemer | Task/PBI får `needs-human` + en kommentar med spørgsmålet eller fejlen |
 
 ### Opsætning (én gang)
@@ -222,7 +223,8 @@ Branches i begge repos: `development` (default, agenternes PR'er) → `staging` 
 ### Dagligt
 
 - `/qugents:ado-plan` (eller "planlæg backloggen") → læs opgaverne i Boards → sæt `agent-ready`.
-- `/qugents:ado-deliver` (eller "tag næste opgave") → review og merge PR'en → `/clear` → `/qugents:ado-deliver` igen, indtil PBI'en er færdig.
+- Sæt `agent-ready` på PBI'en → `/qugents:ado-deliver <PBI-id>` → holdet bygger, verificerer og merger alle Tasks. Stopper kun ved `needs-human`.
+- Vil du selv merge, så tag PBI'en `agent-no-merge` også.
 - Stol du på planen fra start? Sæt `agent-ready` direkte på en uplanlagt PBI: holdet planlægger og bygger den uden en separat gennemgang af Tasks.
 
 ## Opdatering

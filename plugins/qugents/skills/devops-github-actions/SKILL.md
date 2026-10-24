@@ -30,7 +30,7 @@ hotfix/*  ──PR──►  prod  ──back-merge PR──►  development
 | `prod` | `prod` | PO | `staging` (release PR) or `hotfix/*` |
 
 Rules:
-- **Agents open PRs to `development` only.** Promotions to `staging` and `prod` are always the PO's decision; the devops agent may prepare the release PR but never merges it.
+- **Agents open PRs to `development` only.** Promotions to `staging` and `prod` are always the PO's decision; the devops agent may prepare the release PR but never merges it. The only agent merge is `ado-deliver` squash-merging a PBI-approved Task into `development` after green `ci` and a verifier PASS.
 - `development` is the GitHub default branch, so `Fixes AB#<id>` in a merged PR closes the Azure Boards work item (Azure Boards GitHub app).
 - Only `prod` requires a pull request (with a green `ci`). `development` and `staging` accept direct pushes, but none of the three can be force-pushed or deleted (rulesets below). Agents still always deliver through PRs to `development`.
 - A hotfix merged into `prod` always gets a back-merge PR `prod → development` so the fix is not lost at the next release.
