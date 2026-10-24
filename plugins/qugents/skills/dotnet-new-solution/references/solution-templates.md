@@ -21,10 +21,10 @@ Remove `<TargetFramework>`, `<Nullable>` and `<ImplicitUsings>` from the individ
 
 ## `src/Shop.Api/Program.cs`
 
-**`Program.cs` stays a table of contents.** Every service registration or middleware that needs more than one line of setup lives in an extension method in `src/Shop.Api/Infrastructure/<Concern>Extensions.cs`, named `Add<Concern>Extension()` / `Use<Concern>Extension()` (the suffix avoids clashing with the framework method it wraps, e.g. `AddApiVersioning`, `UseSwaggerUI`). Plain one-liners (`AddControllers()`, `UseHttpsRedirection()`, `MapControllers()`) stay in `Program.cs`. The order of the `Use…` calls in `Program.cs` is the middleware order, so keep them there and do not hide several middlewares in one extension.
+**`Program.cs` stays a table of contents.** Every service registration or middleware that needs more than one line of setup lives in an extension method in `src/Shop.Api/Extensions/<Concern>Extensions.cs`, named `Add<Concern>Extension()` / `Use<Concern>Extension()` (the suffix avoids clashing with the framework method it wraps, e.g. `AddApiVersioning`, `UseSwaggerUI`). Plain one-liners (`AddControllers()`, `UseHttpsRedirection()`, `MapControllers()`) stay in `Program.cs`. The order of the `Use…` calls in `Program.cs` is the middleware order, so keep them there and do not hide several middlewares in one extension.
 
 ```csharp
-using Shop.Api.Infrastructure;
+using Shop.Api.Extensions;
 using Shop.DataAccess;
 using Shop.Services;
 
@@ -68,12 +68,12 @@ await app.RunAsync();
 
 To try protected endpoints from Swagger UI, paste the token into a REST client (`Shop.Api.http`) instead; the built-in OpenAPI document has no security scheme until you add a document transformer for it.
 
-### `src/Shop.Api/Infrastructure/ApiVersioningExtensions.cs`
+### `src/Shop.Api/Extensions/ApiVersioningExtensions.cs`
 
 ```csharp
 using Asp.Versioning;
 
-namespace Shop.Api.Infrastructure;
+namespace Shop.Api.Extensions;
 
 public static class ApiVersioningExtensions
 {
@@ -93,10 +93,10 @@ public static class ApiVersioningExtensions
 }
 ```
 
-### `src/Shop.Api/Infrastructure/OpenApiExtensions.cs`
+### `src/Shop.Api/Extensions/OpenApiExtensions.cs`
 
 ```csharp
-namespace Shop.Api.Infrastructure;
+namespace Shop.Api.Extensions;
 
 public static class OpenApiExtensions
 {
@@ -131,12 +131,12 @@ public static class OpenApiExtensions
 }
 ```
 
-### `src/Shop.Api/Infrastructure/CorsExtensions.cs`
+### `src/Shop.Api/Extensions/CorsExtensions.cs`
 
 ```csharp
 using Microsoft.AspNetCore.Cors.Infrastructure;
 
-namespace Shop.Api.Infrastructure;
+namespace Shop.Api.Extensions;
 
 public static class CorsExtensions
 {
@@ -165,12 +165,12 @@ public static class CorsExtensions
 }
 ```
 
-### `src/Shop.Api/Infrastructure/RateLimiterExtensions.cs`
+### `src/Shop.Api/Extensions/RateLimiterExtensions.cs`
 
 ```csharp
 using System.Threading.RateLimiting;
 
-namespace Shop.Api.Infrastructure;
+namespace Shop.Api.Extensions;
 
 public static class RateLimiterExtensions
 {
