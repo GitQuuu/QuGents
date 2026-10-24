@@ -164,4 +164,4 @@ Fixes AB#<taskId>
 
 - The task is linked through `workItems` on create (and `AB#<id>` in the description).
 - The agents never approve, vote on, set auto-complete or bypass policies on pull requests (`vote`, `autoComplete`, `bypassPolicy` are off-limits).
-- **Merging:** a PR is merged by the PO, except for Tasks approved through their PBI's `agent-ready` (and no `agent-no-merge`): `ado-deliver` then squash-merges into `development` after green CI and a PASS from the `verifier` agent. Never into `staging` or `prod`.
+- **Merging:** a PR is merged by the PO, except for Tasks approved through their PBI's `agent-ready` (and no `agent-no-merge`): `ado-deliver` then merges into `development` with a merge commit (no squash) after green CI and a PASS from the `verifier` agent. Never into `staging` or `prod`.
