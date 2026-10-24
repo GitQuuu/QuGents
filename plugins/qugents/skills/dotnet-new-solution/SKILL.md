@@ -112,7 +112,7 @@ dotnet run
 
 ## 5. Angular app (frontend repo)
 
-Run from the root of the **frontend repo** (`Shop-web`). The app is created in the repo root, not in a subfolder:
+Run from the root of the **frontend repo** (`Shop-web`). The app is created in the repo root, not in a subfolder. The folder may already hold `CLAUDE.md`, `.github/`, `.claude/` and `scripts/`, but **not** `README.md` or `.gitignore`: `ng new` stops with "A merge conflicted on path /README.md". Add those after `ng new` (append `certs/` to its `.gitignore`):
 
 ```bash
 npx @angular/cli@latest new shop-web --directory . --style=css --ssr=false --skip-git
