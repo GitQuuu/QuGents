@@ -21,9 +21,12 @@ Remove `<TargetFramework>`, `<Nullable>` and `<ImplicitUsings>` from the individ
 
 ## `src/Shop.Api/Program.cs`
 
+**`Program.cs` stays a table of contents.** Every service registration or middleware that needs more than one line of setup lives in an extension method in `src/Shop.Api/Infrastructure/<Concern>Extensions.cs`, named `Add<Concern>Extension()` / `Use<Concern>Extension()` (the suffix avoids clashing with the framework method it wraps, e.g. `AddApiVersioning`, `UseSwaggerUI`). Plain one-liners (`AddControllers()`, `UseHttpsRedirection()`, `MapControllers()`) stay in `Program.cs`. The order of the `Use…` calls in `Program.cs` is the middleware order, so keep them there and do not hide several middlewares in one extension.
+
 ```csharp
-using System.Threading.RateLimiting;
-using Asp.Versioning;
+using Shop.Api.Infrastructure;
+using Shop.DataAccess;
+using Shop.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -39,50 +42,18 @@ builder.Services.AddJwtAuthentication(builder.Configuration);
 // Web API
 builder.Services.AddControllers();
 builder.Services.AddProblemDetails();
-builder.Services
-    .AddApiVersioning(o =>
-    {
-        o.DefaultApiVersion = new ApiVersion(1, 0);
-        o.AssumeDefaultVersionWhenUnspecified = true;
-        o.ReportApiVersions = true;
-    })
-    .AddMvc();
-builder.Services.AddOpenApi(); // built-in document at /openapi/v1.json
-
-builder.Services.AddCors(o => o.AddPolicy("web", p => p
-    .WithOrigins(builder.Configuration.GetSection("Cors:Origins").Get<string[]>() ?? [])
-    .AllowAnyHeader()
-    .AllowAnyMethod()
-    .AllowCredentials())); // refresh-token cookie
-
-builder.Services.AddRateLimiter(o =>
-{
-    o.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-    o.AddPolicy("default", ctx => RateLimitPartition.GetTokenBucketLimiter(
-        ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-        _ => new TokenBucketRateLimiterOptions
-        {
-            TokenLimit = 100,
-            TokensPerPeriod = 50,
-            ReplenishmentPeriod = TimeSpan.FromSeconds(10),
-            QueueLimit = 0,
-        }));
-    o.AddPolicy("auth", ctx => RateLimitPartition.GetFixedWindowLimiter(
-        ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-        _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1) }));
-});
+builder.Services.AddApiVersioningExtension(); // v1.0 default, reports supported versions
+builder.Services.AddOpenApiExtension();       // built-in document at /openapi/v1.json
+builder.Services.AddCorsExtension();          // allow-list from Cors:Origins, credentials for the refresh cookie
+builder.Services.AddRateLimiterExtension();   // "default" and "auth" policies
 
 var app = builder.Build();
 
-app.UseExceptionHandler(); // ProblemDetails for unhandled exceptions
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
-    app.UseSwaggerUI(o => o.SwaggerEndpoint("/openapi/v1.json", "Shop API v1"));
-}
-
+app.UseExceptionHandler();      // ProblemDetails for unhandled exceptions
+app.UseOpenApiExtension();      // Development only
+app.UseSwaggerUIExtension();    // Development only, /swagger
 app.UseHttpsRedirection();
-app.UseCors("web");
+app.UseCorsExtension();
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseRateLimiter();
@@ -96,6 +67,136 @@ await app.RunAsync();
 `RequireAuthorization()` on `MapControllers()` makes every endpoint require a valid token unless it has `[AllowAnonymous]`, so a forgotten `[Authorize]` fails closed.
 
 To try protected endpoints from Swagger UI, paste the token into a REST client (`Shop.Api.http`) instead; the built-in OpenAPI document has no security scheme until you add a document transformer for it.
+
+### `src/Shop.Api/Infrastructure/ApiVersioningExtensions.cs`
+
+```csharp
+using Asp.Versioning;
+
+namespace Shop.Api.Infrastructure;
+
+public static class ApiVersioningExtensions
+{
+    public static IServiceCollection AddApiVersioningExtension(this IServiceCollection services)
+    {
+        services
+            .AddApiVersioning(o =>
+            {
+                o.DefaultApiVersion = new ApiVersion(1, 0);
+                o.AssumeDefaultVersionWhenUnspecified = true;
+                o.ReportApiVersions = true;
+            })
+            .AddMvc();
+
+        return services;
+    }
+}
+```
+
+### `src/Shop.Api/Infrastructure/OpenApiExtensions.cs`
+
+```csharp
+namespace Shop.Api.Infrastructure;
+
+public static class OpenApiExtensions
+{
+    public const string DocumentPath = "/openapi/v1.json";
+
+    public static IServiceCollection AddOpenApiExtension(this IServiceCollection services)
+    {
+        services.AddOpenApi();
+
+        return services;
+    }
+
+    public static WebApplication UseOpenApiExtension(this WebApplication app)
+    {
+        if (app.Environment.IsDevelopment())
+        {
+            app.MapOpenApi();
+        }
+
+        return app;
+    }
+
+    public static WebApplication UseSwaggerUIExtension(this WebApplication app)
+    {
+        if (app.Environment.IsDevelopment())
+        {
+            app.UseSwaggerUI(o => o.SwaggerEndpoint(DocumentPath, "Shop API v1"));
+        }
+
+        return app;
+    }
+}
+```
+
+### `src/Shop.Api/Infrastructure/CorsExtensions.cs`
+
+```csharp
+using Microsoft.AspNetCore.Cors.Infrastructure;
+
+namespace Shop.Api.Infrastructure;
+
+public static class CorsExtensions
+{
+    public const string WebPolicy = "web";
+    public const string OriginsKey = "Cors:Origins";
+
+    /// <summary>Allow-list for the Angular app from Cors:Origins. Credentials allowed (refresh-token cookie).</summary>
+    public static IServiceCollection AddCorsExtension(this IServiceCollection services)
+    {
+        services.AddCors();
+        services.AddOptions<CorsOptions>().Configure<IConfiguration>((options, configuration) =>
+        {
+            var origins = configuration.GetSection(OriginsKey).Get<string[]>() ?? [];
+            options.AddPolicy(WebPolicy, policy => policy
+                .WithOrigins(origins)
+                .AllowAnyHeader()
+                .AllowAnyMethod()
+                .AllowCredentials());
+        });
+
+        return services;
+    }
+
+    public static IApplicationBuilder UseCorsExtension(this IApplicationBuilder app) =>
+        app.UseCors(WebPolicy);
+}
+```
+
+### `src/Shop.Api/Infrastructure/RateLimiterExtensions.cs`
+
+```csharp
+using System.Threading.RateLimiting;
+
+namespace Shop.Api.Infrastructure;
+
+public static class RateLimiterExtensions
+{
+    public static IServiceCollection AddRateLimiterExtension(this IServiceCollection services)
+    {
+        services.AddRateLimiter(o =>
+        {
+            o.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+            o.AddPolicy("default", ctx => RateLimitPartition.GetTokenBucketLimiter(
+                ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                _ => new TokenBucketRateLimiterOptions
+                {
+                    TokenLimit = 100,
+                    TokensPerPeriod = 50,
+                    ReplenishmentPeriod = TimeSpan.FromSeconds(10),
+                    QueueLimit = 0,
+                }));
+            o.AddPolicy("auth", ctx => RateLimitPartition.GetFixedWindowLimiter(
+                ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1) }));
+        });
+
+        return services;
+    }
+}
+```
 
 ## `src/Shop.Api/Properties/launchSettings.json`
 

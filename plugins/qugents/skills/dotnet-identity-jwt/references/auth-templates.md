@@ -591,7 +591,7 @@ public static class RoleSeeder
 
 In `<App>.Services` registration: `services.AddScoped<ITokenService, TokenService>(); services.AddScoped<IAuthService, AuthService>(); services.AddScoped<IAuthBll, AuthBll>();`
 
-Rate limiting and CORS in `Program.cs` (full file in the `dotnet-new-solution` skill):
+Rate limiting and CORS (in the `dotnet-new-solution` skill they live in `RateLimiterExtensions` and `CorsExtensions`, called from `Program.cs`):
 
 ```csharp
 builder.Services.AddRateLimiter(o =>
