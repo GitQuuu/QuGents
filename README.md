@@ -159,7 +159,17 @@ claude mcp add --scope project --transport stdio azure-devops -- npx -y @azure-d
 
 Giv Claude Code adgang til frontend-repoet: start med `claude --add-dir ../<App>-web`, eller læg `"permissions": { "additionalDirectories": ["../<App>-web"] }` i backend-repoets `.claude/settings.json`.
 
-Første gang et værktøj bruges, åbner browseren et Microsoft-login (eller tilføj `--authentication azcli` og brug `az login`). Tilføj så i begge repos' `CLAUDE.md` (stierne er relative til det repo, filen ligger i):
+Første gang et værktøj bruges, åbner browseren et Microsoft-login (eller tilføj `--authentication azcli` og brug `az login`).
+
+**Personlig Microsoft-konto (hotmail/outlook/live)?** Så afviser login'et med "You can't sign in here with a personal account". Brug en PAT i stedet: tilføj `--authentication pat` til MCP-argumenterne, opret en PAT i Azure DevOps (User settings → Personal access tokens, scope *Work Items: Read & write* og *Project and Team: Read*), og sæt miljøvariablen `PERSONAL_ACCESS_TOKEN` til base64 af `ado:<pat>` (aldrig i `.mcp.json`). PowerShell:
+
+```powershell
+$pat = Read-Host "Azure DevOps PAT" -AsSecureString
+$plain = [Net.NetworkCredential]::new('', $pat).Password
+[Environment]::SetEnvironmentVariable('PERSONAL_ACCESS_TOKEN', [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes("ado:$plain")), 'User')
+```
+
+Åbn en ny terminal bagefter, så Claude Code ser variablen. Tilføj så i begge repos' `CLAUDE.md` (stierne er relative til det repo, filen ligger i):
 
 ```markdown
 ## Azure DevOps
