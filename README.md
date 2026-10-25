@@ -22,6 +22,8 @@ plugins/qugents/
     fullstack-developer.md             implementerer én opgave: API → Service → DAL + Angular
     tester.md                          NUnit + AAA + FakeItEasy, kun testkode
     reviewer.md                        korrekthed, sikkerhed, robusthed i et diff
+    security.md                        sikkerhedskrav ved planlægning + sikkerhedsreview før merge (OWASP, ASVS)
+    verifier.md                        tjekker acceptkriterier før agent-merge
     devops.md                          GitHub Actions, development → staging → prod, deploy til Azure/MonsterASP
   skills/
     dotnet-n-layer/                    API → Service → DAL, thin controllers, slices, C#-skabeloner (backend er altid Web API)
@@ -30,6 +32,7 @@ plugins/qugents/
     dotnet-testing/                    NUnit 4, Arrange-Act-Assert, FakeItEasy, test-skabeloner
     angular-frontend/                  Angular 22 + PrimeNG 22 + Tailwind 4 (signals, httpResource, Signal Forms), TS-skabeloner
     secure-code-review/                review-tjekliste .NET + Angular, severity, output-format
+    security-best-practices/           OWASP API Top 10 + ASVS på stakken, hærdning, Angular, afhængigheder og hemmeligheder
     ado-backlog/                       Azure DevOps (Scrum): typer, felter, tags, WIQL, git/PR-konventioner
     ado-plan/                          PBI'er tagget agent-plan → child Tasks (agent-proposed)
     ado-deliver/                       agent-ready Task → holdet → PR linket til Task'en
@@ -45,6 +48,7 @@ plugins/qugents/
 | `qugents:fullstack-developer` | Bygger én opgave i ét repo (API eller Web) | Ja | dotnet-n-layer, angular-frontend | inherit (sessionens model) |
 | `qugents:tester` | Skriver og kører tests, finder huller | Kun testkode | dotnet-testing | sonnet |
 | `qugents:reviewer` | Verdict + fund efter alvor | Nej | secure-code-review | sonnet |
+| `qugents:security` | Sikkerhed: trusselsmodel ved planlægning (sikkerhedskrav som acceptkriterier) og sikkerhedsreview før merge (OWASP API Top 10, ASVS, hærdning, afhængigheder, hemmeligheder). Sparrer med fullstack-developer om rettelser | Nej | security-best-practices, secure-code-review | claude-opus-5-5 |
 | `qugents:verifier` | Tjekker acceptkriterierne før en agent-merge (PASS/FAIL pr. kriterie) | Nej | dotnet-testing | sonnet |
 | `qugents:devops` | CI/CD, branches, environments, release-PR'er | Ja (workflows/scripts) | devops-github-actions | sonnet |
 
@@ -64,6 +68,7 @@ plugins/qugents/
 | `ado-deliver` | `/qugents:ado-deliver [Task-id]` |
 | `ado-backlog` | (konventioner, hentes af de to ovenfor) |
 | `devops-github-actions` | `/qugents:devops-github-actions` |
+| `security-best-practices` | `/qugents:security-best-practices` |
 
 ## To repos: backend og frontend
 
@@ -79,9 +84,9 @@ En opgave hører altid til ét repo, så én opgave er én PR. En feature bliver
 ## Arbejdsgang med holdet
 
 ```
-planner ──► (architecture: tjek planen) ──► fullstack-developer ──► tester ──► reviewer ──► PR til development
-                                               ▲                        │
-                                               └──── fejl fundet ◄──────┘
+security (krav) ──► planner ──► fullstack-developer ──► tester ──► reviewer ──► security (review) ──► PR ──► CI ──► verifier ──► merge til development
+                                    ▲                                                   │
+                                    └──── fejl/sikkerhedsfund (sparring, maks 2 runder) ◄┘
 ```
 
 Eksempel i Claude Code:

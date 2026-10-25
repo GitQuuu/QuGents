@@ -1,6 +1,6 @@
 ---
 name: ado-deliver
-description: Builds approved Azure DevOps Tasks end to end with the agent team - picks the next approved Task (tagged agent-ready, or a child of a PBI tagged agent-ready) or a given Task or PBI id, claims it, branches, runs fullstack-developer, tester and reviewer, opens a linked pull request, and for PBI-approved tasks also waits for CI, has the verifier check the acceptance criteria, merges into development and continues with the next task until the PBI is done. Use when the user says build PBI 233, take the next task, deliver task 456, work the backlog, or similar.
+description: Builds approved Azure DevOps Tasks end to end with the agent team - picks the next approved Task (tagged agent-ready, or a child of a PBI tagged agent-ready) or a given Task or PBI id, claims it, branches, runs fullstack-developer, tester, reviewer and security (developer and security spar until security findings are fixed), opens a linked pull request, and for PBI-approved tasks also waits for CI, has the verifier check the acceptance criteria, merges into development and continues with the next task until the PBI is done. Use when the user says build PBI 233, take the next task, deliver task 456, work the backlog, or similar.
 ---
 
 # Deliver an approved task
@@ -36,8 +36,9 @@ Between Tasks, keep only a short summary of the previous one; the details live o
 1. **Developer.** Spawn `qugents:fullstack-developer` with the task title, the full task description, the parent PBI's acceptance criteria, and: "This is an API|Web task. Work only in <repo> (you may read the other repo). Implement exactly this task. Do not commit."
 2. **Tester.** Spawn `qugents:tester` with the task spec, the developer's hand-off (including "For the tester") and: "Work only in <repo>. Write and run the tests for this change. Do not commit."
 3. **Reviewer.** Spawn `qugents:reviewer` with the task spec and: "Review the uncommitted changes in <repo> against the integration branch (git -C <repo> diff)."
-4. **Fix loop (max 2 rounds).** If the tester reports bugs or the reviewer says *Request changes*: send the findings (Blockers and Majors only) to `qugents:fullstack-developer` to fix, then run tester and reviewer again. Structural findings may be checked with `qugents:architecture` first.
-5. If it is still not green after 2 rounds, or the developer stops with a question: go to **Blocked**.
+4. **Security.** Spawn `qugents:security` in review mode with the task spec, its acceptance criteria (including the security requirements from planning) and: "Review the uncommitted changes in <repo> for security."
+5. **Fix loop: developer and security spar (max 2 rounds).** If the tester reports bugs, the reviewer says *Request changes*, or security says FAIL: send the findings (reviewer Blockers and Majors, security Critical and High, each with its scenario and suggested fix) to `qugents:fullstack-developer` to fix. If the developer disagrees with a security finding or needs a different fix, send its answer back to `qugents:security` and let it confirm or adjust; relay between them until they agree. Then run tester, reviewer and security again (security re-checks its findings and what the fix touched). Structural findings may be checked with `qugents:architecture` first. Security Medium and Low findings do not loop; they go in the PR.
+6. If it is still not green after 2 rounds, security still has an open Critical or High finding, or the developer stops with a question: go to **Blocked** (`needs-human`, with the open findings in the comment). If the team solved everything, continue: the Task is merged as usual without waiting for the PO (section 5).
 
 Before committing, verify in `<repo>` yourself: API task `dotnet build` + `dotnet test`; Web task `npx ng build` + `npx ng test --watch=false`. Check that no secrets, `app.db` or `certs/` files are staged, and that the other repo has no changes.
 
@@ -54,7 +55,7 @@ Before committing, verify in `<repo>` yourself: API task `dotnet build` + `dotne
 
 ## 5. Verify and merge (PBI-approved Tasks only)
 
-Only when **all** hold: the Task is approved through its PBI's `agent-ready`, the PBI is not tagged `agent-no-merge`, and the PR's base is the integration branch (`development`).
+Only when **all** hold: the Task is approved through its PBI's `agent-ready`, the PBI is not tagged `agent-no-merge`, the PR's base is the integration branch (`development`), and the last security review was PASS (no open Critical or High finding).
 
 1. **CI.** `gh pr checks <n> --repo <owner/repo> --watch --fail-fast` (allow up to 30 minutes). A failing check → one fix round (developer fixes, tester re-runs, push), then wait again. Still red → **Blocked**. If the repo has no checks at all, say so in the PR comment and rely on step 2.
 2. **Verifier.** Spawn `qugents:verifier` with the task title and description, the Task's and the PBI's acceptance criteria, `<repo>` and the PR number. FAIL → one fix round (findings to `qugents:fullstack-developer`, tester, push, CI, verifier again). Still FAIL → **Blocked**.

@@ -68,6 +68,7 @@ Your output is turned into backlog items by the main session (Azure DevOps Tasks
 - Prefer extending existing modules over new ones; say why if a new module is needed.
 - Every task names concrete paths, interfaces and endpoints. "Update the backend" is not a task.
 - Never put backend and frontend changes in the same task.
+- If you are given **security requirements**, every one must appear as an acceptance criterion in the task it belongs to (API or Web). Do not drop or soften them; put disagreements under Open questions.
 - An API task always ends in an API endpoint (method, route, DTOs, status codes). Screens belong in Web tasks, never in server-rendered views.
 - Every task states who may call the endpoint (anonymous, any signed-in user, a role, or the owner). Auth follows the `dotnet-identity-jwt` skill (Identity + JWT); load it when the goal touches login, roles or permissions. For a brand-new project, make the first tasks "API: bootstrap the solution" and "Web: bootstrap the Angular app" per the `dotnet-new-solution` skill.
 - If the goal is already partly implemented, say what exists and plan only the gap.

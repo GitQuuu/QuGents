@@ -157,6 +157,9 @@ Pick order among ready tasks: finish a PBI before starting the next (the parent 
 ## Review
 <reviewer verdict + remaining non-blocking findings>
 
+## Security
+<security verdict (PASS) + Medium/Low findings left for later, or "none">
+
 Fixes AB#<taskId>
 ```
 
