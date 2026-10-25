@@ -421,15 +421,15 @@ public sealed partial class AuthBll : IAuthBll
 Setting and clearing the cookie is transport, so it is allowed in the controller (like the job hand-off).
 
 ```csharp
-// <App>.Api/Controllers/Auth/AuthController.cs (root partial) + one folder per action
+// <App>.Api/Controllers/V1/Auth/AuthController.cs (root partial) + one folder per action
 using System.Text.Json.Serialization;
-using Asp.Versioning;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 
+namespace Shop.Api.Controllers.V1.Auth; // the V1 folder/namespace is the API version
+
 [ApiController]
-[ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/[controller]")]
 [EnableRateLimiting("auth")]
 public sealed partial class AuthController : ControllerBase

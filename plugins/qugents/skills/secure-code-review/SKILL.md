@@ -90,7 +90,7 @@ Start with a verdict, then findings ordered by severity:
 Verdict: Request changes | Approve with comments | Approve
 
 Blocker
-1. src/App.Api/Controllers/Orders/GetOrderAsync/OrdersController.GetOrderAsync.cs:14
+1. src/App.Api/Controllers/V1/Orders/GetOrderAsync/OrdersController.GetOrderAsync.cs:14
    IDOR: the order is returned without checking it belongs to the caller.
    Fix: pass userId to IOrderBll.GetOrderAsync and return 404 from OrderService when OwnerId differs.
 

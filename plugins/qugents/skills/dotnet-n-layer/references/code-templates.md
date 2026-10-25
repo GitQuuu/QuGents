@@ -87,15 +87,15 @@ Every new case gets a unit test (section 9).
 
 ## 3. Controller
 
-`Controllers/Products/ProductsController.cs`: root partial, fields and constructor only.
+`Controllers/V1/Products/ProductsController.cs`: root partial, fields and constructor only. No `[ApiVersion]`: the `V1` folder (namespace) is the version.
 
 ```csharp
-using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 
+namespace Shop.Api.Controllers.V1.Products;
+
 [ApiController]
-[ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/[controller]")]
 [EnableRateLimiting("default")]
 public sealed partial class ProductsController : ControllerBase
@@ -111,7 +111,7 @@ public sealed partial class ProductsController : ControllerBase
 }
 ```
 
-`Controllers/Products/EditProductAsync/ProductsController.EditProductAsync.cs`: one action, thin.
+`Controllers/V1/Products/EditProductAsync/ProductsController.EditProductAsync.cs`: one action, thin.
 
 ```csharp
 using Microsoft.AspNetCore.Authorization;
@@ -135,7 +135,7 @@ public sealed partial class ProductsController
 }
 ```
 
-`Controllers/Products/EditProductAsync/EditProductRequest.cs`
+`Controllers/V1/Products/EditProductAsync/EditProductRequest.cs`
 
 ```csharp
 using System.ComponentModel.DataAnnotations;

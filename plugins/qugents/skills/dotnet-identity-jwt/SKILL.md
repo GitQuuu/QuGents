@@ -38,7 +38,7 @@ Identity owns users, password hashing, roles and lockout. The API issues its own
   ITokenService.cs  TokenService.cs  JwtOptions.cs  Roles.cs  AuthTokens.cs
   RegisterAsync/  LoginAsync/  RefreshAsync/  LogoutAsync/     one slice per operation
 <App>.Api/
-  Controllers/Auth/AuthController.cs + one folder per action (thin; also sets/clears the refresh cookie)
+  Controllers/V1/Auth/AuthController.cs + one folder per action (thin; also sets/clears the refresh cookie)
   Auth/JwtAuthenticationExtensions.cs          AddJwtAuthentication(configuration)
   Auth/ClaimsPrincipalExtensions.cs            GetUserId()
   Auth/RoleSeeder.cs                           creates roles at startup

@@ -118,7 +118,7 @@ The BLL is the extraction boundary. A module can later move into its own API: co
 Each use case is a folder named after the operation. The class is split with `partial`. The root files hold only fields and the constructor; never grow them.
 
 ```
-<App>.Api/Controllers/Products/
+<App>.Api/Controllers/V1/Products/                 the folder V1 is the API version (namespace …Controllers.V1.Products)
   ProductsController.cs                          fields + ctor + class attributes
   EditProductAsync/
     ProductsController.EditProductAsync.cs       the action
@@ -142,7 +142,7 @@ Each use case is a folder named after the operation. The class is split with `pa
 ## Recipe: add a use case
 
 1. Find a comparable slice in the same module and copy its shape.
-2. Create the operation folder in the controller and in the service module.
+2. Create the operation folder in the controller (under the current version folder, `Controllers/V1/<Name>/`) and in the service module.
 3. Add the method to `I<Name>Bll` (and `I<Name>Service` if a new domain operation is needed).
 4. Implement the partials in the folder: Service does the work and returns `ServiceResult<T>`; BLL orchestrates, commits, invalidates cache.
 5. Write the thin action with HTTP conventions (below).
@@ -152,7 +152,8 @@ Each use case is a folder named after the operation. The class is split with `pa
 
 ## HTTP conventions
 
-- Route `api/v{version:apiVersion}/[controller]` with `[ApiVersion]` and `[ApiController]`.
+- Route `api/v{version:apiVersion}/[controller]` with `[ApiController]`. **The version is the folder**, not an attribute: `Controllers/V1/…` is v1.0 and `Controllers/V2/…` is v2.0 (`VersionByNamespaceConvention` in `AddApiVersioningExtension()`). Never put `[ApiVersion]` on a controller.
+- **A new API version is a new folder.** Breaking changes go in `Controllers/V2/<Name>/` with their own controller, request and response types; `V1` stays unchanged so existing clients keep working. Similar code in V1 and V2 is fine: each version has its own contract and context. Both versions call the same BLL/Service; versioning lives only in the Api layer.
 - `[EnableRateLimiting]` on the controller; `[Authorize]` and role checks on protected actions.
 - `[ProducesResponseType]` for every outcome the BLL can return.
 - Slow work returns `202 Accepted` + `jobId`; a jobs endpoint exposes status for polling.

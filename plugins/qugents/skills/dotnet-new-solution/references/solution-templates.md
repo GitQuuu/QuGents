@@ -43,7 +43,7 @@ builder.Services.AddJwtAuthentication(builder.Configuration);
 builder.Services.AddControllers();
 builder.Services.AddProblemDetails();
 builder.Services.AddMapsterExtension();       // global Mapster settings; map with Adapt<T>(), no per-type configs
-builder.Services.AddApiVersioningExtension(); // v1.0 default, reports supported versions
+builder.Services.AddApiVersioningExtension(); // version = folder (Controllers/V1 → v1.0), reports supported versions
 builder.Services.AddOpenApiExtension();       // built-in document at /openapi/v1.json
 builder.Services.AddCorsExtension();          // allow-list from Cors:Origins, credentials for the refresh cookie
 builder.Services.AddRateLimiterExtension();   // "default" and "auth" policies
@@ -97,11 +97,16 @@ public static class MapsterExtensions
 
 ```csharp
 using Asp.Versioning;
+using Asp.Versioning.Conventions;
 
 namespace Shop.Api.Extensions;
 
 public static class ApiVersioningExtensions
 {
+    /// <summary>
+    /// The folder is the version: Controllers/V1/… (namespace …Controllers.V1.…) is v1.0, Controllers/V2/… is v2.0.
+    /// Controllers carry no [ApiVersion]. Routes are api/v{version:apiVersion}/[controller].
+    /// </summary>
     public static IServiceCollection AddApiVersioningExtension(this IServiceCollection services)
     {
         services
@@ -110,8 +115,9 @@ public static class ApiVersioningExtensions
                 o.DefaultApiVersion = new ApiVersion(1, 0);
                 o.AssumeDefaultVersionWhenUnspecified = true;
                 o.ReportApiVersions = true;
+                o.ApiVersionReader = new UrlSegmentApiVersionReader();
             })
-            .AddMvc();
+            .AddMvc(o => o.Conventions.Add(new VersionByNamespaceConvention()));
 
         return services;
     }

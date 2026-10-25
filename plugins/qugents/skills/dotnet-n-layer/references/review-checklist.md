@@ -55,7 +55,8 @@ Smells, each one a finding:
 
 ## 6. HTTP and security
 
-- [ ] `api/v{version:apiVersion}/[controller]`, `[ApiVersion]`, `[ApiController]`, `[EnableRateLimiting]`.
+- [ ] `api/v{version:apiVersion}/[controller]`, `[ApiController]`, `[EnableRateLimiting]`; the controller lives in `Controllers/V<n>/<Name>/` (namespace `…Controllers.V<n>.<Name>`) and has **no** `[ApiVersion]`.
+- [ ] A breaking change to an existing endpoint edits `V1` instead of adding the endpoint under a new version folder.
 - [ ] `[Authorize]` and role checks on protected actions. Ownership checks happen in the Service, not the controller.
 - [ ] User context (id, alias, roles) is passed to the BLL as parameters.
 
