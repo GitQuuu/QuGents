@@ -17,19 +17,19 @@ Backend and frontend live in **separate repositories**: `<App>` (the .NET soluti
 
 ## N-tier: the physical tiers
 
-N-tier is about **where things run**; N-layer (Api → Services → DataAccess) is about how the API's code is organized and belongs to the developers (`dotnet-n-layer`). The devops agent owns the tiers.
+N-tier is about **where things run**; N-layer (Api → Services → DataAccess) is about how the API's code is organized (`dotnet-n-layer`). **The architecture agent decides the topology** (which tiers exist, when one is split or replaced) and records it under `## Architecture decisions` in `CLAUDE.md`. **The devops agent realizes it:** hosting per tier, pipelines, configuration, deploy order and health checks. Devops never changes the topology on its own (no new worker tier, no database switch); if hosting or operations call for a change, say so and ask for an architecture decision.
 
 | Tier | Runs | Azure | MonsterASP |
 |---|---|---|---|
 | Presentation | Angular static build (frontend repo) | Static Web Apps | static site + `web.config` |
 | Application | ASP.NET Core API, incl. the in-process Hangfire server (backend repo) | App Service | API site |
-| Data | Database. Starts as SQLite on the API host; later a server database as its own tier | Azure SQL / PostgreSQL Flexible Server | MonsterASP MSSQL |
+| Data | Database: SQLite on the API host by default; a server database as its own tier once architecture decides so | Azure SQL / PostgreSQL Flexible Server | MonsterASP MSSQL |
 
 - **One set of tiers per environment.** `development`, `staging` and `prod` each have their own frontend, API and database. Never share a database between environments.
 - **Only neighbours talk.** Browser → API over HTTPS (the API's CORS origin is the frontend URL of the same environment); API → database over an allow-listed or private connection. The browser never reaches the database.
 - **Configuration per tier.** Frontend: API URL through the build configuration (`environment.<env>.ts`, `NG_CONFIGURATION`). API: connection strings and secrets in the host's configuration. Database: least privilege for the app user (no schema changes in `prod`); migrations run as a separate deploy step.
 - **Deploy order:** data (migrations) → API → frontend, so a new frontend never calls an API that is not there yet.
-- **SQLite caveat:** with SQLite the data tier lives on the API host, so the API cannot scale out to more than one instance and the data is lost if the host's disk is replaced. Move to a server database before scaling or before real production data.
+- **SQLite on the API host (default topology):** realize it as one API instance (no scale-out) with the database file on persistent storage, and back it up. Point out the limits when they become relevant (scale-out, real production data); switching to a server database is an architecture decision.
 - **Health per tier:** `/health` on the API (extend with a database check when the data tier is separate); the frontend host serves `index.html` for every route.
 
 ## Branch model

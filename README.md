@@ -45,13 +45,13 @@ plugins/qugents/
 | Agent | Rolle | Redigerer | Preloader | Model |
 |---|---|---|---|---|
 | `qugents:planner` | Bryder en epic/feature ned i opgaver | Nej | dotnet-n-layer, angular-frontend | sonnet |
-| `qugents:architecture` | Placering, lag, DI, udskillelse af moduler; vurderer design med SOLID/DRY | Nej | dotnet-n-layer, design-principles | claude-opus-5-5 |
+| `qugents:architecture` | Placering, lag, DI, udskillelse af moduler; vurderer design med SOLID/DRY; beslutter N-tier (hvilke tiers, hvornår de splittes) | Nej | dotnet-n-layer, design-principles | claude-opus-5-5 |
 | `qugents:fullstack-developer` | Bygger én opgave i ét repo (API eller Web). Erfaren i SOLID og DRY (retningslinjer), N-layer, Repository + UoW, modular monolith og vertical slices | Ja | dotnet-n-layer, angular-frontend, design-principles | inherit (sessionens model) |
 | `qugents:tester` | Skriver og kører tests, finder huller | Kun testkode | dotnet-testing | sonnet |
 | `qugents:reviewer` | Verdict + fund efter alvor | Nej | secure-code-review | sonnet |
 | `qugents:security` | Sikkerhed: trusselsmodel ved planlægning (sikkerhedskrav som acceptkriterier) og sikkerhedsreview før merge (OWASP API Top 10, ASVS, hærdning, afhængigheder, hemmeligheder). Sparrer med fullstack-developer om rettelser | Nej | security-best-practices, secure-code-review | claude-opus-5-5 |
 | `qugents:verifier` | Tjekker acceptkriterierne før en agent-merge (PASS/FAIL pr. kriterie) | Nej | dotnet-testing | sonnet |
-| `qugents:devops` | N-tier (frontend-, API- og database-tier pr. miljø), CI/CD, branches, environments, release-PR'er | Ja (workflows/scripts) | devops-github-actions | sonnet |
+| `qugents:devops` | Realiserer arkitektens N-tier (hosting, konfiguration og deploy pr. tier og miljø), CI/CD, branches, environments, release-PR'er | Ja (workflows/scripts) | devops-github-actions | sonnet |
 
 `model` kan ændres i hver agents frontmatter (`sonnet`, `opus`, `haiku`, `inherit` eller et fuldt model-id som `claude-opus-5-5`).
 
