@@ -115,7 +115,7 @@ The BLL is the extraction boundary. A module can later move into its own API: co
 
 ## Vertical slices from the service layer down
 
-Each use case is a folder named after the operation. The class is split with `partial`. The root files hold only fields and the constructor; never grow them.
+Each use case is a folder named after the operation. The class is split with `partial`. The root files hold only fields and the constructor; never grow them. Partial files are always named `<Type>.<Operation>.cs` (`ProjectsController.CreateProjectAsync.cs`, `ProjectBll.CreateProjectAsync.cs`, `ProjectService.CreateProjectAsync.cs`), never just `<Operation>.cs`: the same operation exists in several layers, and the type prefix keeps file names unique in tabs, search, stack traces and PRs.
 
 ```
 <App>.Api/Controllers/V1/Products/                 the folder V1 is the API version (namespace …Controllers.V1.Products)
