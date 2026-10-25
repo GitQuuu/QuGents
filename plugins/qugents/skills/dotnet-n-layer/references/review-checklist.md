@@ -30,6 +30,8 @@ Smells, each one a finding:
 - [ ] `try/catch` around the BLL call for expected failures.
 - [ ] Action body longer than ~6 lines (job hand-off excepted).
 - [ ] Request model not beside the action, or a new action added to the root partial.
+- [ ] Hand mapping (`new XxxDto { … }`, `new XxxResponse(…)`, static `From(...)`) instead of `Adapt<T>()`, or per-type Mapster config (`IRegister`, `NewConfig`). Quick check: `grep -rnE "new [A-Z]\w*(Dto|Response)\b" src/*.Api/Controllers`.
+- [ ] `ArgumentNullException.ThrowIfNull(request)` in an action.
 
 ## 3. Slice shape
 

@@ -54,9 +54,18 @@ A controller action does exactly this and nothing more:
 
 1. Binds and validates the request (`[ApiController]` gives an automatic 400 on an invalid model).
 2. Reads transport context (user id, roles from claims) and passes it on as **parameters**.
-3. Maps the request model to a service DTO (`request.Adapt<XxxDto>()`).
+3. Maps the request model to a service DTO with Mapster: `request.Adapt<XxxDto>()`.
 4. Calls **one** `I<Name>Bll` method.
-5. Translates the `ServiceResult<T>` with `ResponseService`.
+5. Translates the `ServiceResult<T>` with `ResponseService`: `_response.ToActionResult(result)`, or `_response.ToActionResult<XxxDto, XxxResponse>(result)` when the body is a different type than the DTO (Mapster maps it on success).
+
+Besides these steps an action may only do HTTP work the result needs, such as setting or clearing a cookie or header (`if (result.Success) { RefreshCookie.Append(...); }`).
+
+**Mapping (Mapster, no hand mapping):**
+
+- Map only with `Adapt<T>()` (`request.Adapt<XxxDto>()`, `entity.Adapt<XxxDto>()`, `entities.Adapt<List<XxxDto>>()`, `dto.Adapt(entity)`). Never `new XxxDto { A = request.A, … }` or `new XxxResponse(dto.A, …)`, and no static `From(...)` factories.
+- **No per-type mapping config** (`IRegister`, `NewConfig`, `TypeAdapterConfig<,>`). The only Mapster setup is the global one in `AddMapsterExtension()` (flexible name matching, every destination member must have a source).
+- So request, DTO, entity and response use the **same member names**. When the JSON name must differ, rename with `[JsonPropertyName("…")]` (on a record: `[property: JsonPropertyName("…")]`), not with a mapping.
+- A response type contains only what the client may see (the refresh token never goes in a body). Leave out a member instead of mapping it away.
 
 The only exception is the background-job hand-off. There the controller may upload raw input to blob storage, enqueue a job with `IBackgroundJobClient` and return `202 Accepted` with the `jobId`.
 
@@ -66,7 +75,9 @@ The only exception is the background-job hand-off. There the controller may uplo
 - call more than one BLL method, or orchestrate anything;
 - inject `IUnitOfWork`, repositories, `DbContext`, `I<Name>Service` or `ICacheService`;
 - call `SaveChangesAsync`, touch the cache, or return entities;
-- use `try/catch` for expected failures (that is `ServiceResult`'s job).
+- use `try/catch` for expected failures (that is `ServiceResult`'s job);
+- map by hand or add Mapster config (see **Mapping** above);
+- null-check the bound request (`ArgumentNullException.ThrowIfNull(request)`): `[ApiController]` already answers 400 for a missing body.
 
 Rule of thumb: an action body is 3–6 lines. When it grows, the extra logic belongs in the BLL.
 
@@ -159,7 +170,7 @@ Each use case is a folder named after the operation. The class is split with `pa
 |---|---|
 | Result object | `ServiceResult<T>`: success flag, `HttpStatusCode`, message or data |
 | Response translator | `ResponseService` maps status code → `IActionResult` (`NotFound`, `Forbid`, `Conflict`...) |
-| Mapping | Mapster `Adapt<T>()`, configured centrally. Request → DTO in the controller, entity ↔ DTO in services |
+| Mapping | Mapster `Adapt<T>()` only, global settings in `AddMapsterExtension()`, no per-type config. Same member names across request, DTO, entity and response. Request → DTO in the controller, entity ↔ DTO in services, DTO → response via `ToActionResult<TDto, TResponse>` |
 | Repository | Generic `IBaseRepository<T>` (CRUD, predicate queries, `IncludeReferenceAsync`) plus one repository per aggregate |
 | Unit of Work | Scoped: one request shares one `DbContext` across all repositories |
 | Cache-aside | `ICacheService` over `IMemoryCache`; the BLL calls `ClearAll()` after writes |

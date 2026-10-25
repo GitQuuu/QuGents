@@ -62,6 +62,7 @@ dotnet add src/Shop.Api package Microsoft.AspNetCore.Authentication.JwtBearer
 dotnet add src/Shop.Api package Asp.Versioning.Mvc
 dotnet add src/Shop.Api package Swashbuckle.AspNetCore.SwaggerUI
 dotnet add src/Shop.Api package Microsoft.EntityFrameworkCore.Design
+dotnet add src/Shop.Api package Mapster                    # Adapt<T>() in controllers and ResponseService
 
 # Tests
 dotnet add tests/Shop.Tests package FakeItEasy

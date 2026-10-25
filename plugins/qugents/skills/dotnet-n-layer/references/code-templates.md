@@ -47,20 +47,29 @@ public sealed class ServiceResult<T>
 
 ```csharp
 using System.Net;
+using Mapster;
 using Microsoft.AspNetCore.Mvc;
 
 public interface IResponseService
 {
     IActionResult ToActionResult<T>(ServiceResult<T> result);
+
+    /// <summary>Like ToActionResult, but maps the success data to TResponse with Mapster.</summary>
+    IActionResult ToActionResult<T, TResponse>(ServiceResult<T> result);
 }
 
 public sealed class ResponseService : IResponseService
 {
-    public IActionResult ToActionResult<T>(ServiceResult<T> result) => result.StatusCode switch
+    public IActionResult ToActionResult<T>(ServiceResult<T> result) => Create(result, result.Data);
+
+    public IActionResult ToActionResult<T, TResponse>(ServiceResult<T> result) =>
+        Create(result, result.Success && result.Data is not null ? result.Data.Adapt<TResponse>() : default);
+
+    private static IActionResult Create<T>(ServiceResult<T> result, object? data) => result.StatusCode switch
     {
-        HttpStatusCode.OK         => new OkObjectResult(result.Data),
-        HttpStatusCode.Created    => new ObjectResult(result.Data) { StatusCode = StatusCodes.Status201Created },
-        HttpStatusCode.Accepted   => new AcceptedResult(location: (string?)null, value: result.Data),
+        HttpStatusCode.OK         => new OkObjectResult(data),
+        HttpStatusCode.Created    => new ObjectResult(data) { StatusCode = StatusCodes.Status201Created },
+        HttpStatusCode.Accepted   => new AcceptedResult(location: (string?)null, value: data),
         HttpStatusCode.NoContent  => new NoContentResult(),
         HttpStatusCode.BadRequest => new BadRequestObjectResult(Problem(result)),
         HttpStatusCode.NotFound   => new NotFoundObjectResult(Problem(result)),

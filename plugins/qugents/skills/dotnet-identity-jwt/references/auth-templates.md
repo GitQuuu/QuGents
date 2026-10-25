@@ -422,6 +422,7 @@ Setting and clearing the cookie is transport, so it is allowed in the controller
 
 ```csharp
 // <App>.Api/Controllers/Auth/AuthController.cs (root partial) + one folder per action
+using System.Text.Json.Serialization;
 using Asp.Versioning;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -459,14 +460,20 @@ public sealed partial class AuthController : ControllerBase
 
     private IActionResult TokenResponse(ServiceResult<AuthTokens> result)
     {
-        if (!result.Success)
-            return response.ToActionResult(result);
-        SetRefreshCookie(result.Data!);
-        return Ok(new AccessTokenResponse(result.Data!.AccessToken, result.Data.AccessTokenExpiresAt));
+        if (result.Success)
+        {
+            SetRefreshCookie(result.Data!);
+        }
+
+        // Mapster maps AuthTokens → AccessTokenResponse by name; the refresh token is not in the body.
+        return response.ToActionResult<AuthTokens, AccessTokenResponse>(result);
     }
 }
 
-public sealed record AccessTokenResponse(string AccessToken, DateTimeOffset ExpiresAt);
+// Same member names as AuthTokens, so Adapt needs no config; the JSON name stays "expiresAt".
+public sealed record AccessTokenResponse(
+    string AccessToken,
+    [property: JsonPropertyName("expiresAt")] DateTimeOffset AccessTokenExpiresAt);
 public sealed record LoginRequest(string Email, string Password);
 public sealed record RegisterRequest(string Email, string Password, string DisplayName);
 

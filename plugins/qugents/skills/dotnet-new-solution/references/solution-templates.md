@@ -42,6 +42,7 @@ builder.Services.AddJwtAuthentication(builder.Configuration);
 // Web API
 builder.Services.AddControllers();
 builder.Services.AddProblemDetails();
+builder.Services.AddMapsterExtension();       // global Mapster settings; map with Adapt<T>(), no per-type configs
 builder.Services.AddApiVersioningExtension(); // v1.0 default, reports supported versions
 builder.Services.AddOpenApiExtension();       // built-in document at /openapi/v1.json
 builder.Services.AddCorsExtension();          // allow-list from Cors:Origins, credentials for the refresh cookie
@@ -67,6 +68,30 @@ await app.RunAsync();
 `RequireAuthorization()` on `MapControllers()` makes every endpoint require a valid token unless it has `[AllowAnonymous]`, so a forgotten `[Authorize]` fails closed.
 
 To try protected endpoints from Swagger UI, paste the token into a REST client (`Shop.Api.http`) instead; the built-in OpenAPI document has no security scheme until you add a document transformer for it.
+
+### `src/Shop.Api/Extensions/MapsterExtensions.cs`
+
+```csharp
+using Mapster;
+
+namespace Shop.Api.Extensions;
+
+public static class MapsterExtensions
+{
+    /// <summary>
+    /// Global Mapster settings only; no per-type mapping configs. Types map by member name with Adapt&lt;T&gt;(),
+    /// and every destination member must have a source, so a renamed member fails loudly.
+    /// </summary>
+    public static IServiceCollection AddMapsterExtension(this IServiceCollection services)
+    {
+        TypeAdapterConfig.GlobalSettings.Default
+            .NameMatchingStrategy(NameMatchingStrategy.Flexible)
+            .RequireDestinationMemberSource(true);
+
+        return services;
+    }
+}
+```
 
 ### `src/Shop.Api/Extensions/ApiVersioningExtensions.cs`
 
