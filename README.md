@@ -33,6 +33,7 @@ plugins/qugents/
     angular-frontend/                  Angular 22 + PrimeNG 22 + Tailwind 4 (signals, httpResource, Signal Forms), TS-skabeloner
     secure-code-review/                review-tjekliste .NET + Angular, severity, output-format
     security-best-practices/           OWASP API Top 10 + ASVS på stakken, hærdning, Angular, afhængigheder og hemmeligheder
+    design-principles/                 SOLID, DRY, KISS/YAGNI som retningslinjer + hvordan N-layer, modular monolith, vertical slices og Repository/UoW hænger sammen
     ado-backlog/                       Azure DevOps (Scrum): typer, felter, tags, WIQL, git/PR-konventioner
     ado-plan/                          PBI'er tagget agent-plan → child Tasks (agent-proposed)
     ado-deliver/                       agent-ready Task → holdet → PR linket til Task'en
@@ -44,13 +45,13 @@ plugins/qugents/
 | Agent | Rolle | Redigerer | Preloader | Model |
 |---|---|---|---|---|
 | `qugents:planner` | Bryder en epic/feature ned i opgaver | Nej | dotnet-n-layer, angular-frontend | sonnet |
-| `qugents:architecture` | Placering, lag, DI, udskillelse af moduler | Nej | dotnet-n-layer | claude-opus-5-5 |
-| `qugents:fullstack-developer` | Bygger én opgave i ét repo (API eller Web) | Ja | dotnet-n-layer, angular-frontend | inherit (sessionens model) |
+| `qugents:architecture` | Placering, lag, DI, udskillelse af moduler; vurderer design med SOLID/DRY | Nej | dotnet-n-layer, design-principles | claude-opus-5-5 |
+| `qugents:fullstack-developer` | Bygger én opgave i ét repo (API eller Web). Erfaren i SOLID og DRY (retningslinjer), N-layer, Repository + UoW, modular monolith og vertical slices | Ja | dotnet-n-layer, angular-frontend, design-principles | inherit (sessionens model) |
 | `qugents:tester` | Skriver og kører tests, finder huller | Kun testkode | dotnet-testing | sonnet |
 | `qugents:reviewer` | Verdict + fund efter alvor | Nej | secure-code-review | sonnet |
 | `qugents:security` | Sikkerhed: trusselsmodel ved planlægning (sikkerhedskrav som acceptkriterier) og sikkerhedsreview før merge (OWASP API Top 10, ASVS, hærdning, afhængigheder, hemmeligheder). Sparrer med fullstack-developer om rettelser | Nej | security-best-practices, secure-code-review | claude-opus-5-5 |
 | `qugents:verifier` | Tjekker acceptkriterierne før en agent-merge (PASS/FAIL pr. kriterie) | Nej | dotnet-testing | sonnet |
-| `qugents:devops` | CI/CD, branches, environments, release-PR'er | Ja (workflows/scripts) | devops-github-actions | sonnet |
+| `qugents:devops` | N-tier (frontend-, API- og database-tier pr. miljø), CI/CD, branches, environments, release-PR'er | Ja (workflows/scripts) | devops-github-actions | sonnet |
 
 `model` kan ændres i hver agents frontmatter (`sonnet`, `opus`, `haiku`, `inherit` eller et fuldt model-id som `claude-opus-5-5`).
 
@@ -69,6 +70,7 @@ plugins/qugents/
 | `ado-backlog` | (konventioner, hentes af de to ovenfor) |
 | `devops-github-actions` | `/qugents:devops-github-actions` |
 | `security-best-practices` | `/qugents:security-best-practices` |
+| `design-principles` | `/qugents:design-principles` |
 
 ## To repos: backend og frontend
 

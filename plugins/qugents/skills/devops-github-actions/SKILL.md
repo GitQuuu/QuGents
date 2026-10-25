@@ -15,6 +15,23 @@ Backend and frontend live in **separate repositories**: `<App>` (the .NET soluti
 - An API change the frontend depends on must be merged (and deployed to that environment) before the frontend change that uses it. Breaking changes go behind a new API version.
 - Connect **both** repos to Azure Boards (Azure Boards GitHub app), so `AB#<id>` and `Fixes AB#<id>` work in either.
 
+## N-tier: the physical tiers
+
+N-tier is about **where things run**; N-layer (Api → Services → DataAccess) is about how the API's code is organized and belongs to the developers (`dotnet-n-layer`). The devops agent owns the tiers.
+
+| Tier | Runs | Azure | MonsterASP |
+|---|---|---|---|
+| Presentation | Angular static build (frontend repo) | Static Web Apps | static site + `web.config` |
+| Application | ASP.NET Core API, incl. the in-process Hangfire server (backend repo) | App Service | API site |
+| Data | Database. Starts as SQLite on the API host; later a server database as its own tier | Azure SQL / PostgreSQL Flexible Server | MonsterASP MSSQL |
+
+- **One set of tiers per environment.** `development`, `staging` and `prod` each have their own frontend, API and database. Never share a database between environments.
+- **Only neighbours talk.** Browser → API over HTTPS (the API's CORS origin is the frontend URL of the same environment); API → database over an allow-listed or private connection. The browser never reaches the database.
+- **Configuration per tier.** Frontend: API URL through the build configuration (`environment.<env>.ts`, `NG_CONFIGURATION`). API: connection strings and secrets in the host's configuration. Database: least privilege for the app user (no schema changes in `prod`); migrations run as a separate deploy step.
+- **Deploy order:** data (migrations) → API → frontend, so a new frontend never calls an API that is not there yet.
+- **SQLite caveat:** with SQLite the data tier lives on the API host, so the API cannot scale out to more than one instance and the data is lost if the host's disk is replaced. Move to a server database before scaling or before real production data.
+- **Health per tier:** `/health` on the API (extend with a database check when the data tier is separate); the frontend host serves `index.html` for every route.
+
 ## Branch model
 
 ```
