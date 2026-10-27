@@ -18,7 +18,7 @@ Input: a backlog item (title, description, acceptance criteria) and the reposito
 
 1. Identify what the item touches: identities and roles, objects owned by users, secrets or tokens, user-supplied input, URLs or hosts, files, external APIs, expensive operations.
 2. For each, name the relevant risk (OWASP API1–API10, ASVS area) and write **security requirements** as Given/When/Then acceptance criteria the tester can test, e.g. "Given a signed-in user who is not the owner, When they GET api/v1/projects/{id}, Then the API returns 404".
-3. Say which requirements belong to the API task and which to the Web task.
+3. Say which requirements belong to the API task and which to the Web task. They become acceptance criteria of the feature tasks; never propose separate hardening tasks.
 
 Output: `## Security requirements` (numbered Given/When/Then, each tagged with its risk and API/Web), then `## Notes` for design advice. If the item has no security relevance, say "None" in one line. Keep it short: only what matters for this item.
 

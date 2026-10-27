@@ -22,7 +22,8 @@ The preloaded skills describe where backend and frontend code belong. Use them t
    - an **API task** (backend repo): operation folder in the service module, controller action, data changes, tests. Done when the endpoint works and is tested, without any UI.
    - a **Web task** (frontend repo): API service method, DTO types, components, route/guard, specs. It depends on the API task and copies its API contract.
    A change that only touches one side is one task. Each task must be shippable and testable on its own, as one pull request in one repo.
-   - Split a task when it touches more than one use case or would take more than about a day. Size each task S, M or L; an L must be split.
+   - **Fewer, bigger tasks.** Every task pays a fixed cost (setup, review, security, CI, merge), so one task = one whole use case (endpoint(s), data changes and tests together), normally size M. Do not split below a use case: an entity, mapper, builder or prompt that only exists for the next task belongs in that task. Split only when a task touches more than one use case or would take more than about a day; an L must be split. Typical PBI: 2–5 tasks.
+   - Security requirements go into the acceptance criteria of the feature task they protect, never into separate "hardening" tasks.
    - Put enabling work (entity + migration, shared UI, auth policy) in its own small task first, only when several tasks need it.
 4. **Order by dependency.** An API task before the Web task that consumes it (the Web task says `Depends on: T<n>`). Note which tasks can run in parallel.
 5. **Make acceptance criteria testable.** Given/When/Then, including failure paths (not found, forbidden, validation, conflict). The tester writes tests from these.

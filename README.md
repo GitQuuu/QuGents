@@ -50,7 +50,7 @@ plugins/qugents/
 | `qugents:tester` | Tester adfærd set fra brugeren gennem offentlige API'er, ægte database (SQLite/Testcontainers), mocks kun ved systemgrænser, bug først, property-based + mutation testing, brugerflows i browseren med Playwright MCP | Kun testkode | dotnet-testing | sonnet |
 | `qugents:reviewer` | Verdict + fund efter alvor | Nej | secure-code-review | sonnet |
 | `qugents:security` | Sikkerhed: trusselsmodel ved planlægning (sikkerhedskrav som acceptkriterier) og sikkerhedsreview før merge (OWASP API Top 10, ASVS, hærdning, afhængigheder, hemmeligheder). Sparrer med fullstack-developer om rettelser | Nej | security-best-practices, secure-code-review | claude-opus-5-5 |
-| `qugents:verifier` | Tjekker acceptkriterierne før en agent-merge (PASS/FAIL pr. kriterie) | Nej | dotnet-testing | sonnet |
+| `qugents:verifier` | Tjekker hele PBI'ens acceptkriterier, når alle Tasks er merget (PASS/FAIL pr. kriterie) | Nej | dotnet-testing | sonnet |
 | `qugents:devops` | Realiserer arkitektens N-tier (hosting, konfiguration og deploy pr. tier og miljø), CI/CD, branches, environments, release-PR'er | Ja (workflows/scripts) | devops-github-actions | sonnet |
 
 `model` kan ændres i hver agents frontmatter (`sonnet`, `opus`, `haiku`, `inherit` eller et fuldt model-id som `claude-opus-5-5`).
@@ -86,7 +86,8 @@ En opgave hører altid til ét repo, så én opgave er én PR. En feature bliver
 ## Arbejdsgang med holdet
 
 ```
-security (krav) ──► planner ──► fullstack-developer ──► tester ──► reviewer ──► security (review) ──► PR ──► CI ──► verifier ──► merge til development
+security (krav) ──► planner ──► fullstack-developer ──► tester ──► reviewer ∥ security ──► PR ──► CI + kriterier dækket ──► merge til development
+                                                                    (ved PBI-slut: mutation testing + verifier for hele PBI'en)
                                     ▲                                                   │
                                     └──── fejl/sikkerhedsfund (sparring, maks 2 runder) ◄┘
 ```

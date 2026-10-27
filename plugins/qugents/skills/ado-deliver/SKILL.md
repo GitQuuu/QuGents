@@ -33,16 +33,18 @@ Between Tasks, keep only a short summary of the previous one; the details live o
 
 ## 3. Build with the team
 
+**Context pack.** Agents start without context and lose time exploring the codebase. Build one context pack per Task and put it at the top of every agent prompt: the repository folder; the Task spec and acceptance criteria; the exact files and folders the Task names (Backend/Frontend section, API contract); one comparable existing slice (its folder path); and, once the developer is done, its list of changed files and `git -C <repo> diff --stat`. Tell each agent: "Start from these files; explore further only if they are not enough."
+
 0. **Bug first.** If the Task fixes a bug (work item type Bug, or the title starts with "Fix"), spawn `qugents:tester` first: "Reproduce this bug with a failing test through the public API in <repo>; run it and show the failure. Do not change production code." Give the developer that test as the definition of done.
 1. **Developer.** Spawn `qugents:fullstack-developer` with the task title, the full task description, the parent PBI's acceptance criteria, and: "This is an API|Web task. Work only in <repo> (you may read the other repo). Implement exactly this task. Do not commit."
-2. **Tester.** Spawn `qugents:tester` with the task spec, the developer's hand-off (including "For the tester"), both repository folders and: "Work only in <repo>. Write and run the tests for this change (behaviour through the public API, real database, mutation testing once; for a Web task also walk the user flow with Playwright MCP). Do not commit."
+2. **Tester.** Spawn `qugents:tester` with the task spec, the developer's hand-off (including "For the tester"), both repository folders and: "Work only in <repo>. Write and run the tests for this change (behaviour through the public API, real database; for a Web task also walk the user flow with Playwright MCP). Map every acceptance criterion to a passing test or mark it Manual. No mutation testing in a Task. Do not commit."
 3. **Reviewer and security, in parallel.** They read the same diff independently, so spawn both in **one message** (two Agent calls) and wait for both:
-   - `qugents:reviewer` with the task spec and: "Review the uncommitted changes in <repo> against the integration branch (git -C <repo> diff). Do not build or run tests."
+   - `qugents:reviewer` with the task spec and: "Review the uncommitted changes in <repo> against the integration branch (git -C <repo> diff) for correctness, robustness, performance and test adequacy. Security is reviewed by qugents:security in parallel; do not duplicate it. Do not build or run tests."
    - `qugents:security` in review mode with the task spec, its acceptance criteria (including the security requirements from planning) and: "Review the uncommitted changes in <repo> for security. Do not run the test suite."
 4. **Fix loop: developer and security spar (max 2 rounds).** If the tester reports bugs, the reviewer says *Request changes*, or security says FAIL: send the findings (reviewer Blockers and Majors, security Critical and High, each with its scenario and suggested fix) to `qugents:fullstack-developer` to fix. If the developer disagrees with a security finding or needs a different fix, send its answer back to `qugents:security` and let it confirm or adjust; relay between them until they agree. Then re-run **only what had findings**: the tester (filtered to the module) if tests or behaviour changed, the reviewer if it requested changes, security if it said FAIL (it re-checks its findings and what the fix touched); run those re-checks in parallel too. Structural findings may be checked with `qugents:architecture` first. Security Medium and Low findings do not loop; they go in the PR.
 5. If it is still not green after 2 rounds, security still has an open Critical or High finding, or the developer stops with a question: go to **Blocked** (`needs-human`, with the open findings in the comment). If the team solved everything, continue: the Task is merged as usual without waiting for the PO (section 5).
 
-Before committing, run the **full suite once** in `<repo>` yourself (the developer and tester only ran filtered tests): API task `dotnet build` + `dotnet test --no-build`; Web task `npx ng build` + `npx ng test --watch=false`. Keep the result (passed/total and the commit) for the PR comment and the verifier; do not run the full suite again for this commit. Check that no secrets, `app.db` or `certs/` files are staged, and that the other repo has no changes.
+Before committing, build and run **this Task's filtered tests** once yourself (API: `dotnet build` + the tester's filter; Web: `npx ng build` + the feature's specs). Do **not** run the full suite locally: CI runs it on the PR and is the gate. Run the full suite locally only when the Task changed shared code (`Common/`, base classes, DI extensions, `Program.cs`, middleware). Check that no secrets, `app.db` or `certs/` files are staged, and that the other repo has no changes.
 
 ## 4. Pull request
 
@@ -59,19 +61,18 @@ Before committing, run the **full suite once** in `<repo>` yourself (the develop
 
 Only when **all** hold: the Task is approved through its PBI's `agent-ready`, the PBI is not tagged `agent-no-merge`, the PR's base is the integration branch (`development`), and the last security review was PASS (no open Critical or High finding).
 
-**Run steps 1 and 2 at the same time:** start the verifier (step 2) right after the push and wait for CI (step 1) while it works; both must be green before step 3.
-
-1. **CI.** `gh pr checks <n> --repo <owner/repo> --watch --fail-fast` (allow up to 30 minutes). A failing check → one fix round (developer fixes, tester re-runs, push), then wait again. Still red → **Blocked**. If the repo has no checks at all, say so in the PR comment and rely on step 2.
-2. **Verifier.** Spawn `qugents:verifier` with the task title and description, the Task's and the PBI's acceptance criteria, `<repo>`, the PR number, your full-suite result for the pushed commit and the tester's mapping of criteria to tests (it does not re-run the full suite). FAIL → one fix round (findings to `qugents:fullstack-developer`, tester, push, CI, verifier again). Still FAIL → **Blocked**.
+1. **CI.** `gh pr checks <n> --repo <owner/repo> --watch --fail-fast` (allow up to 30 minutes). A failing check → one fix round (developer fixes, tester re-runs, push), then wait again. Still red → **Blocked**. If the repo has no checks at all, run the full suite locally once instead and say so in the PR comment.
+2. **Acceptance check (you, no agent).** Use the tester's mapping: every acceptance criterion of the Task (including the security requirements) has a named test that passed in CI, or is marked Manual with what the PO should look at. A criterion without evidence → one round where the tester adds the test (push, CI again). Still missing → **Blocked**. The verifier agent is not run per Task; it checks the whole PBI at the end.
 3. **Merge with a merge commit** (never squash or rebase, so every Task stays visible as its own branch in the history): `gh pr merge <n> --repo <owner/repo> --merge --delete-branch --subject "Merge AB#<id> <title>" --body "Fixes AB#<id>"`. Never `--admin`, never bypass a failing or missing required check. If the repo does not allow merge commits, stop and ask the PO to enable *Allow merge commits* (Settings → General → Pull Requests). Merge conflict: merge `origin/development` into the branch, build and test, push, and go back to step 1 (once); otherwise **Blocked**.
-4. **After the merge.** `git -C <repo> switch development && git -C <repo> pull`, then `git -C <repo> branch -d agent/<id>-<slug>` and `git -C <repo> fetch --prune` (`--delete-branch` already removed the remote branch). Task tags: remove `agent-pr-open`, add `agent-merged`. If the Task is not Done a minute later (Azure Boards app not connected), set its state to Done. Comment: `Verified (<n> criteria, <m> manual) and merged: PR #<n>.`, listing any Manual checks.
+4. **After the merge.** `git -C <repo> switch development && git -C <repo> pull`, then `git -C <repo> branch -d agent/<id>-<slug>` and `git -C <repo> fetch --prune` (`--delete-branch` already removed the remote branch). Task tags: remove `agent-pr-open`, add `agent-merged`. If the Task is not Done a minute later (Azure Boards app not connected), set its state to Done. Comment: `Merged PR #<n>: CI green, <n> criteria covered by tests, <m> manual.`, listing any Manual checks.
 5. **Next Task.** Pick the next Task of the same PBI (pick order and dependencies from `ado-backlog`) and go back to section 1 without asking. A Web Task whose API Task was just merged can start now.
 
 ### PBI done
 
 When every Task of the PBI (except `agent-hold`) is Done:
 
-- Spawn `qugents:verifier` once more for the **PBI's** acceptance criteria, across both repos on `development`.
+- **Mutation testing, once per PBI.** Spawn `qugents:tester`: "Run mutation testing on everything this PBI changed in <repo> (`dotnet stryker --since:<the development commit before the PBI's first merge>`; StrykerJS for the frontend if set up). Add tests for surviving mutants that represent real behaviour, on branch `agent/<pbiId>-mutation-tests`." If it added tests: commit (`AB#<pbiId>`), PR, CI, merge as in section 5 (no security review needed for test-only changes).
+- Spawn `qugents:verifier` for the **PBI's** acceptance criteria, across both repos on `development`, with the Tasks' criteria-to-test mappings and the merged PRs.
 - PBI tags: remove `agent-ready`, add `agent-done`. Leave the PBI's state to the PO.
 - Comment on the PBI: the verification table, the merged PRs, and the Manual checks the PO should do before closing the PBI.
 
@@ -88,6 +89,6 @@ Tell the user in a few lines: the Tasks handled with PR links and whether they w
 ## Rules
 
 - Only approved Tasks are built (approval rule in `ado-backlog`).
-- Agents never approve or vote on PRs, never use `--admin` or bypass checks, never merge into `staging` or `prod`, and never push directly to `development`, `staging` or `prod`. The only merge an agent makes is section 5: a PBI-approved Task, into `development`, with green CI and a PASS from the verifier.
+- Agents never approve or vote on PRs, never use `--admin` or bypass checks, never merge into `staging` or `prod`, and never push directly to `development`, `staging` or `prod`. The only merge an agent makes is section 5: a PBI-approved Task (or the PBI's mutation-test PR), into `development`, with green CI, every acceptance criterion covered by a passing test or marked Manual, and a security PASS.
 - Never change acceptance criteria to fit the implementation; if the spec is wrong, block and ask.
 - Keep the PO's tags and comments; edit only the agent tags listed in `ado-backlog`.

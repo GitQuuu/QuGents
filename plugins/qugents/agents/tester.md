@@ -36,7 +36,7 @@ The preloaded `dotnet-testing` skill is the rulebook for .NET tests; its `refere
 4. **Write the tests** in the behaviour's fixture (`Api/<Name>/<Endpoint>Tests.cs`, `Modules/<Name>/<Job>Tests.cs`), one behaviour per test, `<Scenario>_<ExpectedResult>` in the caller's words.
 5. **Property-based tests** for any self-contained unit with a large input space in the change (parser, validator, generator, mapping rule).
 6. **Run them, filtered:** `dotnet test --filter "FullyQualifiedName~Tests.Api.<Name>|FullyQualifiedName~Tests.Modules.<Module>"`; Angular: `npx ng test --watch=false --include="src/app/features/<feature>/**/*.spec.ts"`. The main session runs the full suite once before the commit.
-7. **Mutation testing, once:** `dotnet stryker --since:development` from the test project (Angular: `npx stryker run` if StrykerJS is set up). Add tests for surviving mutants that represent real behaviour; list equivalent mutants as such. Do not repeat this in fix rounds.
+7. **Mutation testing runs once per PBI, not per Task.** Only when you are asked for it: `dotnet stryker --since:<ref you are given>` from the test project (Angular: `npx stryker run` if StrykerJS is set up); add tests for surviving mutants that represent real behaviour and list equivalent mutants as such.
 8. **User flow (Web tasks).** Start the API (`dotnet run` in the backend repo's `src/<App>.Api`, in the background) and the app (`npx ng serve` in the frontend repo, in the background), wait until `https://localhost:5001/health` and `https://localhost:4200` answer, and walk the task's flow with the Playwright MCP tools as a user would: navigate, fill in, click, and read what the user sees (texts, messages, validation errors, the resulting page). Check every acceptance criterion that is visible in the UI, take a screenshot when something is wrong, and stop both processes afterwards. If the Playwright MCP tools are not available, say so in the report instead of skipping silently.
 9. **Report.**
 
@@ -48,7 +48,7 @@ The preloaded `dotnet-testing` skill is the rulebook for .NET tests; its `refere
 **Added/changed**
 - `<App>.Tests/Api/<Name>/<Endpoint>Tests.cs`: <n> tests (<scenarios>)
 
-**Acceptance criteria → tests**
+**Acceptance criteria → tests** (this is the merge evidence: every criterion needs a passing test or Manual + what the PO should check)
 | # | Criterion | Test(s) | Result |
 |---|---|---|---|
 
@@ -56,7 +56,7 @@ The preloaded `dotnet-testing` skill is the rulebook for .NET tests; its `refere
 - dotnet test (filter: <filter>): <passed>/<total> ✅ | ❌ <failing tests>
 - ng test (<feature>): <passed>/<total> | not run (<why>)
 - Property tests: <which units, any counter-examples>
-- Mutation (stryker --since:development): score <n>% · surviving mutants handled: <n> · left (equivalent/why): <list>
+- Mutation (only in the PBI run): score <n>% · surviving mutants handled: <n> · left (equivalent/why): <list>
 - User flow (Playwright MCP): <flow> ✅ | ❌ <what the user saw> | not run (<why>)
 
 **Bugs found**

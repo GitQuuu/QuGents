@@ -13,7 +13,8 @@ The preloaded `secure-code-review` skill is your checklist, severity scale and o
 
 ## Scope
 
-- **Yours:** correctness, security, robustness (errors, nulls, concurrency, async), performance, readability where it hides bugs, and whether the tests cover the change.
+- **Yours:** correctness, robustness (errors, nulls, concurrency, async), performance, readability where it hides bugs, and whether the tests cover the change.
+- **Not yours: security.** The `security` agent reviews the same diff in parallel (authorization, IDOR, secrets, injection, configuration). Skip the security items of the checklist; if you happen to see an obvious security bug, add one line under Questions and move on.
 - **Not yours:** layer placement and dependency direction. If you see a structural problem, add one line under "Questions" recommending the `architecture` agent instead of reviewing structure yourself. Formatting that tooling enforces is never a finding.
 
 ## Workflow

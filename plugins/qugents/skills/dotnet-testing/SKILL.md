@@ -191,10 +191,10 @@ Mutation testing changes the production code (flips conditions, removes calls) a
 ```bash
 dotnet tool install dotnet-stryker              # once, as a local tool
 cd tests/<App>.Tests
-dotnet stryker --since:development              # only mutate code changed on this branch
+dotnet stryker --since:<ref>                     # only mutate code changed since <ref> (e.g. the commit before the PBI)
 ```
 
-Run it once per task on the changed code (not in fix rounds, not on the whole solution), and report surviving mutants that matter.
+Run it **once per PBI** at the end, on everything the PBI changed (`--since:<commit before the PBI>`), not in every Task and not on the whole solution. Report surviving mutants that matter and add tests for them.
 
 ## Running
 
