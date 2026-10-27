@@ -111,7 +111,10 @@ Register HTTP in `app.config.ts`: `provideHttpClient(withInterceptors([authInter
 ## Testing
 
 - Vitest (default from v21) with `TestBed`. Follow the project's runner if it still uses Karma/Jasmine.
-- Arrange/Act/Assert, as in the backend tests.
+- Arrange/Act/Assert, as in the backend tests. Assert what the **user sees and does**: find elements by role, label or visible text and interact like a user (click, type), not by CSS classes, component internals or private signals. No logic in specs.
+- Fake only the boundary: HTTP with `HttpTestingController`. Use the real services, stores and child components otherwise.
+- Property-based tests with `fast-check` for pure functions with many inputs (formatters, validators, parsers); mutation testing with StrykerJS (`npx stryker run`) when it is set up.
+- Real user flows are checked in a browser with Playwright MCP by the tester (see the `tester` agent).
 - HTTP: `provideHttpClient()` + `provideHttpClientTesting()` and `HttpTestingController` (`expectOne`, `flush`, `verify`).
 - Test API services (URL, method, body, error mapping), stores/services with logic, and container components' behavior. Presentational components: only when they hold logic.
 - Component specs that render PrimeNG need `providePrimeNG({ theme: 'none' })` plus `MessageService`/`ConfirmationService` in the TestBed providers. Flush pending `httpResource` requests with `HttpTestingController` before `await fixture.whenStable()`.

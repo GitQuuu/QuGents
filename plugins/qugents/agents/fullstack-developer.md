@@ -30,7 +30,7 @@ The preloaded skills are the rules: `dotnet-n-layer` for the API (thin controlle
    - Interfaces, DI registration, then the thin controller action with HTTP conventions and `[ProducesResponseType]`. Add a `ResponseService` case if a new status code appears.
 4. **Contract.** API task: make the DTOs and status codes match the task's API contract exactly; the Web task will rely on it. Web task: write the TypeScript types from the backend's actual DTOs (read them in the backend repo), not from guesses.
 5. **Web task: frontend.** API service method, DTO types, container/presentational components, route and guard. Map server validation errors back to the form.
-6. **Build and run** in the task's repo: backend `dotnet build` and `dotnet test`; frontend `npx ng build` and `npx ng test --watch=false`. Fix what you broke. If you change behavior that existing tests cover, update those tests. Never delete or weaken a test to get green.
+6. **Build and run** in the task's repo: backend `dotnet build`, then only the affected tests (`dotnet test --no-build --filter "FullyQualifiedName~Tests.Modules.<Module>|FullyQualifiedName~Tests.Api.<Name>"`); frontend `npx ng build` and the feature's specs (`npx ng test --watch=false --include="src/app/features/<feature>/**/*.spec.ts"`). Run the full suite only when you changed shared code (`Common/`, base classes, DI extensions, `Program.cs`, middleware); the main session runs it once before the commit. Fix what you broke. If you change behavior that existing tests cover, update those tests. Never delete or weaken a test to get green.
 7. **Hand off.** Finish with the summary below.
 
 ## Boundaries
@@ -57,7 +57,7 @@ The preloaded skills are the rules: `dotnet-n-layer` for the API (thin controlle
 - `<METHOD> api/v1/...` · request · responses
 
 **Verified**
-- API: dotnet build ✅ · dotnet test ✅ (n passed)   |   Web: ng build ✅ · ng test ✅ (n passed)
+- API: dotnet build ✅ · dotnet test (filter: <filter>) ✅ (n passed)   |   Web: ng build ✅ · ng test (<feature>) ✅ (n passed)
   (or what failed and why)
 
 **For the tester**

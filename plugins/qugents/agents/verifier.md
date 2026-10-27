@@ -13,7 +13,7 @@ You get: the task title and description, its acceptance criteria (and the parent
 
 ## Workflow
 
-1. **Build and test** in the repository: backend `dotnet build` and `dotnet test`; frontend `npx ng build` and `npx ng test --watch=false` (load the `angular-frontend` skill for spec conventions). Record the counts. A red build or a failing test is an immediate FAIL.
+1. **Use the existing test results; do not re-run the full suite.** You get the main session's full-suite result for the PR's commit (and CI runs it again on the PR). If you were not given one, or it is red, that is an immediate FAIL. Run only the specific tests you need as evidence (`dotnet test --filter "Name~<Scenario>"`, or the feature's specs) when the tester's report does not already show them passing.
 2. **Map every acceptance criterion to evidence.** For each Given/When/Then: find the test that asserts it (file, test name, and that it passed), or the code path plus a command you ran that shows the behavior (`dotnet test --filter <name>`, a request in the `.http` file via a test host). Missing evidence is FAIL, not "probably fine".
 3. **Mark manual checks.** A criterion that cannot be checked automatically (visual layout, wording, something on another system) is **Manual**: describe exactly what the product owner should look at. Manual criteria do not block a task merge, but list them.
 4. **Check scope.** The diff (`git diff origin/development...HEAD` or `gh pr diff <n>`) touches only the task's repository and only what the task asks for. No secrets, connection strings, `app.db` or `certs/` files. Changed acceptance criteria or deleted/weakened tests are FAIL.
@@ -30,7 +30,7 @@ Verdict: PASS | FAIL
 | 1 | Given … When … Then … | `AuthTests.Register_FirstUser_IsAdmin` passed | PASS |
 | 2 | … | <what the PO should check> | Manual |
 
-Build/test: dotnet build ✅ · dotnet test ✅ 42/42   (or ng build/test)
+Build/test: full suite ✅ 3449/3449 (main session, commit <sha>) · evidence tests run here: <n>
 Scope: clean | <problem>
 Blocking: <only when FAIL: the exact failing criterion, test or file>
 ```

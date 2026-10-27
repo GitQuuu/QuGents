@@ -1,6 +1,129 @@
 # Test templates
 
-NUnit 4 + FakeItEasy fixtures for the `Products` module from the `dotnet-n-layer` skill. Replace names, keep the shape.
+Templates for the `Products` module from the `dotnet-n-layer` skill. Replace names, keep the shape.
+
+**Start with section 0** (API behaviour tests through HTTP with a real SQLite database). Sections 2, 3 and 5 build the system under test by hand with faked repositories and `IUnitOfWork`; they are **legacy**, kept for projects that already test that way. For new code, use them only for boundary fakes (third-party clients, external processes).
+
+## 0. API behaviour test (preferred)
+
+`TestData/ApiFactory.cs`: the real API in memory with a temp SQLite database; only boundaries are replaced.
+
+```csharp
+using System.Net.Http.Headers;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Time.Testing;
+
+public sealed class ApiFactory : WebApplicationFactory<Program>
+{
+    public const string JwtIssuer = "shop-tests";
+    public const string JwtAudience = "shop-tests-web";
+    public const string JwtSigningKey = "test-only-signing-key-0123456789-abcdefghijklmnop";
+
+    private readonly string _dir = Path.Combine(Path.GetTempPath(), "shop-tests-" + Guid.NewGuid().ToString("N"));
+
+    public FakeTimeProvider Clock { get; } = new(new DateTimeOffset(2026, 1, 1, 12, 0, 0, TimeSpan.Zero));
+
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
+        Directory.CreateDirectory(_dir);
+        builder.ConfigureAppConfiguration((_, c) => c.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["ConnectionStrings:Default"] = $"Data Source={Path.Combine(_dir, "app.db")}",  // real SQLite, migrated on start
+            ["Jwt:Issuer"] = JwtIssuer,
+            ["Jwt:Audience"] = JwtAudience,
+            ["Jwt:SigningKey"] = JwtSigningKey,
+        }));
+        builder.ConfigureTestServices(services =>
+        {
+            services.AddSingleton<TimeProvider>(Clock);                    // boundary: the clock
+            services.AddSingleton<IPaymentGateway, FakePaymentGateway>();  // boundary: a third-party API
+        });
+    }
+
+    /// <summary>An HttpClient signed in as the given user (token minted with the test signing key).</summary>
+    public HttpClient ClientFor(string userId, params string[] roles)
+    {
+        var client = CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", TestJwt.Create(userId, roles));
+        return client;
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        base.Dispose(disposing);
+        if (!disposing) return;
+        SqliteConnection.ClearAllPools();
+        try { Directory.Delete(_dir, recursive: true); } catch (IOException) { /* best effort */ }
+    }
+}
+```
+
+`Api/Products/EditProductTests.cs`: behaviour from the caller's point of view.
+
+```csharp
+[TestFixture]
+public sealed class EditProductTests
+{
+    private ApiFactory _api = null!;
+
+    [SetUp]
+    public void SetUp() => _api = new ApiFactory();
+
+    [TearDown]
+    public void TearDown() => _api.Dispose();
+
+    [Test]
+    public async Task Owner_ValidRequest_StoresNewName()
+    {
+        // Arrange
+        var owner = _api.ClientFor("owner-1");
+        var created = await CreateProductAsync(owner, "Old name");
+
+        // Act
+        var response = await owner.PutAsJsonAsync($"api/v1/products/{created.Id}", new { name = "New name" });
+
+        // Assert
+        var stored = await owner.GetFromJsonAsync<ProductResponse>($"api/v1/products/{created.Id}");
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+            Assert.That(stored!.Name, Is.EqualTo("New name"));
+        }
+    }
+
+    [Test]
+    public async Task OtherUser_Returns404AndLeavesProductUnchanged()
+    {
+        // Arrange
+        var created = await CreateProductAsync(_api.ClientFor("owner-1"), "Old name");
+
+        // Act
+        var response = await _api.ClientFor("user-2").PutAsJsonAsync($"api/v1/products/{created.Id}", new { name = "Hacked" });
+
+        // Assert
+        var stored = await _api.ClientFor("owner-1").GetFromJsonAsync<ProductResponse>($"api/v1/products/{created.Id}");
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
+            Assert.That(stored!.Name, Is.EqualTo("Old name"));
+        }
+    }
+
+    private static async Task<ProductResponse> CreateProductAsync(HttpClient client, string name)
+    {
+        var response = await client.PostAsJsonAsync("api/v1/products", new { name });
+        response.EnsureSuccessStatusCode();
+        return (await response.Content.ReadFromJsonAsync<ProductResponse>())!;
+    }
+}
+```
+
+The helper only performs setup through the public API; the expected values stay literal in the test.
 
 Common usings (or put them in a `GlobalUsings.cs` in the test project):
 
