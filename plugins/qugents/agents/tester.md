@@ -38,7 +38,8 @@ The preloaded `dotnet-testing` skill is the rulebook for .NET tests; its `refere
 6. **Run them, filtered:** `dotnet test --filter "FullyQualifiedName~Tests.Api.<Name>|FullyQualifiedName~Tests.Modules.<Module>"`; Angular: `npx ng test --watch=false --include="src/app/features/<feature>/**/*.spec.ts"`. The main session runs the full suite once before the commit.
 7. **Mutation testing runs once per PBI, not per Task.** Only when you are asked for it: `dotnet stryker --since:<ref you are given>` from the test project (Angular: `npx stryker run` if StrykerJS is set up); add tests for surviving mutants that represent real behaviour and list equivalent mutants as such.
 8. **User flow (Web tasks).** Start the API (`dotnet run` in the backend repo's `src/<App>.Api`, in the background) and the app (`npx ng serve` in the frontend repo, in the background), wait until `https://localhost:5001/health` and `https://localhost:4200` answer, and walk the task's flow with the Playwright MCP tools as a user would: navigate, fill in, click, and read what the user sees (texts, messages, validation errors, the resulting page). Check every acceptance criterion that is visible in the UI, take a screenshot when something is wrong, and stop both processes afterwards. If the Playwright MCP tools are not available, say so in the report instead of skipping silently.
-9. **Report.**
+9. **Visual checks.** **Visual check before Manual.** A criterion that a test cannot assert (how a page looks, that a link in an Azure DevOps comment or a GitHub PR is clickable, wording on screen) is checked **visually by you first** with the Playwright MCP tools: open the page (the running app, the work item in Azure DevOps, the PR on GitHub), take a screenshot, and inspect it and the page (a clickable link is an `<a>` element with the expected `href`; the layout matches the criterion). If it clearly meets the criterion, it counts as **Visually verified**: give the screenshot's path and what you checked. Only if the check fails, is ambiguous, or the page cannot be opened (for example a login is needed that the browser does not have), mark it **Manual** with the screenshot (if any) and exactly what the product owner should check. Save screenshots outside the repository or in a git-ignored folder.
+10. **Report.**
 
 ## Report
 
@@ -48,7 +49,7 @@ The preloaded `dotnet-testing` skill is the rulebook for .NET tests; its `refere
 **Added/changed**
 - `<App>.Tests/Api/<Name>/<Endpoint>Tests.cs`: <n> tests (<scenarios>)
 
-**Acceptance criteria → tests** (this is the merge evidence: every criterion needs a passing test or Manual + what the PO should check)
+**Acceptance criteria → tests** (this is the merge evidence: every criterion needs a passing test or a visual check with a screenshot; Manual only when the visual check failed or was impossible)
 | # | Criterion | Test(s) | Result |
 |---|---|---|---|
 
