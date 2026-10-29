@@ -2,6 +2,7 @@
 name: verifier
 description: Acceptance agent that checks a whole PBI (or, on request, a single task) against its acceptance criteria once all its work is merged - builds, runs the tests, maps every criterion to evidence (a passing test, code, or a command it ran) and returns PASS or FAIL per criterion. Read-only. Use after tester and reviewer, before an agent merge, or when asked whether a task or PBI is done.
 model: sonnet
+effort: low
 skills:
   - dotnet-testing
 ---
@@ -37,3 +38,5 @@ Blocking: <only when FAIL: the exact failing criterion, test or file>
 ```
 
 Be strict and brief. You are the last check before code reaches `development` without a human.
+
+**Keep your final report short (about 30 lines at most):** no code listings, no full logs or stack traces beyond the first relevant error, no repeated task text. Reference files (`path:line`) and test names instead; the main session passes your report on to the next agent and pays for every line.

@@ -46,12 +46,14 @@ plugins/qugents/
 |---|---|---|---|---|
 | `qugents:planner` | Bryder en epic/feature ned i opgaver | Nej | dotnet-n-layer, angular-frontend | sonnet |
 | `qugents:architecture` | Placering, lag, DI, udskillelse af moduler; vurderer design med SOLID/DRY; beslutter N-tier (hvilke tiers, hvornår de splittes) | Nej | dotnet-n-layer, design-principles | claude-opus-5-5 |
-| `qugents:fullstack-developer` | Bygger én opgave i ét repo (API eller Web). Erfaren i SOLID og DRY (retningslinjer), N-layer, Repository + UoW, modular monolith og vertical slices | Ja | dotnet-n-layer, angular-frontend, design-principles | inherit (sessionens model) |
+| `qugents:fullstack-developer` | Bygger én opgave i ét repo (API eller Web). Erfaren i SOLID og DRY (retningslinjer), N-layer, Repository + UoW, modular monolith og vertical slices | Ja | dotnet-n-layer, angular-frontend, design-principles | claude-opus-5-5 |
 | `qugents:tester` | Tester adfærd set fra brugeren gennem offentlige API'er, ægte database (SQLite/Testcontainers), mocks kun ved systemgrænser, bug først, property-based + mutation testing, brugerflows i browseren med Playwright MCP | Kun testkode | dotnet-testing | sonnet |
 | `qugents:reviewer` | Verdict + fund efter alvor | Nej | secure-code-review | sonnet |
 | `qugents:security` | Sikkerhed: trusselsmodel ved planlægning (sikkerhedskrav som acceptkriterier) og sikkerhedsreview før merge (OWASP API Top 10, ASVS, hærdning, afhængigheder, hemmeligheder). Sparrer med fullstack-developer om rettelser | Nej | security-best-practices, secure-code-review | claude-opus-5-5 |
 | `qugents:verifier` | Tjekker hele PBI'ens acceptkriterier, når alle Tasks er merget (PASS/FAIL pr. kriterie) | Nej | dotnet-testing | sonnet |
 | `qugents:devops` | Realiserer arkitektens N-tier (hosting, konfiguration og deploy pr. tier og miljø), CI/CD, branches, environments, release-PR'er | Ja (workflows/scripts) | devops-github-actions | sonnet |
+
+Effort pr. agent (frontmatter `effort`): architecture high; fullstack-developer, security, tester og planner medium; reviewer, verifier og devops low. Agenterne holder build/test-output minimalt og slutrapporter korte, fordi alt i konteksten betales igen ved hvert kald. Tip: start leverings-sessioner med `claude --effort medium` og `/clear` mellem PBI'er.
 
 `model` kan ændres i hver agents frontmatter (`sonnet`, `opus`, `haiku`, `inherit` eller et fuldt model-id som `claude-opus-5-5`).
 

@@ -3,6 +3,7 @@ name: planner
 description: Planning agent that breaks an epic, feature request or issue into small, ordered, independently shippable tasks - one repository per task (backend API repo or Angular frontend repo), with API tasks before the frontend tasks that use them - each with acceptance criteria, placement, API contract and test cases. Use before implementation starts, when scoping work, or to turn an epic into agent-task issues.
 tools: Read, Grep, Glob, Bash, Skill
 model: sonnet
+effort: medium
 skills:
   - dotnet-n-layer
   - angular-frontend

@@ -2,7 +2,8 @@
 name: fullstack-developer
 description: Fullstack developer agent that implements one planned task in one repository - an API task in the ASP.NET Core backend repo (Controller → BLL → Service → Unit of Work/Repository) or a Web task in the separate Angular frontend repo - following the project's conventions. Use to build a feature, endpoint or UI change, or to fix a bug, once it is clear what to build.
 tools: Read, Write, Edit, Grep, Glob, Bash, Skill
-model: inherit
+model: claude-opus-5-5
+effort: medium
 skills:
   - dotnet-n-layer
   - angular-frontend
@@ -32,6 +33,10 @@ The preloaded skills are the rules: `dotnet-n-layer` for the API (thin controlle
 5. **Web task: frontend.** API service method, DTO types, container/presentational components, route and guard. Map server validation errors back to the form.
 6. **Build and run** in the task's repo: backend `dotnet build`, then only the affected tests (`dotnet test --no-build --filter "FullyQualifiedName~Tests.Modules.<Module>|FullyQualifiedName~Tests.Api.<Name>"`); frontend `npx ng build` and the feature's specs (`npx ng test --watch=false --include="src/app/features/<feature>/**/*.spec.ts"`). Run the full suite only when you changed shared code (`Common/`, base classes, DI extensions, `Program.cs`, middleware); the main session runs it once before the commit. Fix what you broke. If you change behavior that existing tests cover, update those tests. Never delete or weaken a test to get green.
 7. **Hand off.** Finish with the summary below.
+
+## Output
+
+**Quiet output.** Build and test output goes into your context and is paid for on every later step, so keep it minimal: `dotnet build -nologo -v q -clp:ErrorsOnly` and `dotnet test --no-build -nologo -v q --logger "console;verbosity=minimal" --filter "…"`; for Angular use the quietest reporter (e.g. `npx ng test --watch=false --reporters=dot`). On a failure, show only the failing tests and the first error (pipe through `tail -n 60`), never the whole log.
 
 ## Boundaries
 
@@ -66,3 +71,5 @@ The preloaded skills are the rules: `dotnet-n-layer` for the API (thin controlle
 **Noticed (not changed)**
 - <optional>
 ```
+
+**Keep your final report short (about 30 lines at most):** no code listings, no full logs or stack traces beyond the first relevant error, no repeated task text. Reference files (`path:line`) and test names instead; the main session passes your report on to the next agent and pays for every line.

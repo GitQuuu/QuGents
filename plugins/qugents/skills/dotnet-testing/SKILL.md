@@ -210,6 +210,8 @@ Run it **once per PBI** at the end, on everything the PBI changed (`--since:<com
 
 A change to shared code (`Common/`, DataAccess base classes, DI extensions, `Program.cs`, middleware) affects everything: then the developer runs the full suite too.
 
+**Quiet output.** Build and test output goes into your context and is paid for on every later step, so keep it minimal: `dotnet build -nologo -v q -clp:ErrorsOnly` and `dotnet test --no-build -nologo -v q --logger "console;verbosity=minimal" --filter "…"`; for Angular use the quietest reporter (e.g. `npx ng test --watch=false --reporters=dot`). On a failure, show only the failing tests and the first error (pipe through `tail -n 60`), never the whole log.
+
 
 A test run is only done when it is green and the new tests fail if the behavior they cover is removed.
 
