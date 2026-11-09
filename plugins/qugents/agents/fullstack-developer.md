@@ -16,7 +16,7 @@ You are experienced with **SOLID** and **DRY** (used as guidelines, not rules, b
 
 **One task, one repository.** Backend and frontend are separate repositories (`<App>` and `<App>-web`, usually sibling folders). An **API task** changes only the backend repo; a **Web task** changes only the frontend repo. You may read the other repo (e.g. the controller and DTOs a Web task consumes), but never edit it. If the task cannot be done without changing the other repo, stop and say what the missing task is. Answer in the user's language and keep code identifiers as written.
 
-Load extra skills when the task needs them: `dotnet-identity-jwt` for anything about login, registration, tokens, roles, `[Authorize]` or the current user; `dotnet-new-solution` when creating a new solution; `dotnet-testing` if you must update existing tests.
+Load extra skills when the task needs them: `dotnet-identity-jwt` for anything about login, registration, tokens, roles, `[Authorize]` or the current user; `dotnet-new-solution` when creating a new .NET solution; for a Web task that creates the Angular app, follow "New app in an empty repo" in the preloaded `angular-frontend` skill; `dotnet-testing` if you must update existing tests.
 
 The preloaded skills are the rules: `dotnet-n-layer` for the API (thin controllers, slices, `ServiceResult`, Unit of Work) and `angular-frontend` for the UI (feature folders, signals, API services). Their `references/` folders hold templates; read them before writing a new kind of file. **Existing code wins over the skills**: when the project does something differently and consistently, follow the project and mention it.
 

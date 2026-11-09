@@ -115,12 +115,7 @@ dotnet run
 
 ## 5. Angular app (frontend repo)
 
-Run from the root of the **frontend repo** (`Shop-web`). The app is created in the repo root, not in a subfolder. The folder may already hold `CLAUDE.md`, `.github/`, `.claude/` and `scripts/`, but **not** `README.md` or `.gitignore`: `ng new` stops with "A merge conflicted on path /README.md". Add those after `ng new` (append `certs/` to its `.gitignore`):
-
-```bash
-npx @angular/cli@latest new shop-web --directory . --style=css --ssr=false --skip-git
-npm install primeng @primeuix/themes @angular/cdk tailwindcss @tailwindcss/postcss postcss tailwindcss-primeui
-```
+Run from the root of the **frontend repo** (`Shop-web`). Follow **"New app in an empty repo"** in the `angular-frontend` skill: it creates the app in the repo root without prompts, moves an existing `README.md`/`.gitignore` aside so `ng new` does not stop on a merge conflict, and installs with a long timeout. Append `certs/` to the resulting `.gitignore`.
 
 Then follow the `angular-frontend` skill: `.postcssrc.json`, `src/styles.css`, `providePrimeNG` (with license key), interceptors, `AuthStore` + `provideAppInitializer`.
 

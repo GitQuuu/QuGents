@@ -1,6 +1,6 @@
 ---
 name: angular-frontend
-description: Conventions for Angular frontends (v20+, signals, standalone, zoneless/OnPush) built with PrimeNG components and Tailwind CSS that talk to a versioned ASP.NET Core API. Use when writing, placing or reviewing Angular code, e.g. a feature, component, page layout, PrimeNG table/form/dialog, route, API service, interceptor, or a spec file, or when wiring the frontend to a backend endpoint.
+description: Conventions for Angular frontends (v20+, signals, standalone, zoneless/OnPush) built with PrimeNG components and Tailwind CSS that talk to a versioned ASP.NET Core API, including creating the app in an empty repo. Use when creating, writing, placing or reviewing Angular code, e.g. a feature, component, page layout, PrimeNG table/form/dialog, route, API service, interceptor, or a spec file, or when wiring the frontend to a backend endpoint.
 ---
 
 # Angular frontend
@@ -119,12 +119,35 @@ Register HTTP in `app.config.ts`: `provideHttpClient(withInterceptors([authInter
 - Test API services (URL, method, body, error mapping), stores/services with logic, and container components' behavior. Presentational components: only when they hold logic.
 - Component specs that render PrimeNG need `providePrimeNG({ theme: 'none' })` plus `MessageService`/`ConfirmationService` in the TestBed providers. Flush pending `httpResource` requests with `HttpTestingController` before `await fixture.whenStable()`.
 
+## New app in an empty repo
+
+A Web task that bootstraps the app ("set up the Angular project") starts in a repo that holds at most `README.md`, `.gitignore`, `CLAUDE.md`, `.github/`, `.claude/`, `scripts/` or an IDE folder. Create the app **in the repo root**, never in a subfolder. Three things make `ng new` fail when run by an agent, so follow these steps exactly (Git Bash):
+
+1. **Check Node.** `node -v` must be a version the current Angular CLI supports (an even LTS release). If it is not, stop and report it; do not install Node yourself.
+2. **Move conflicting files aside.** `ng new` creates `README.md`, `.gitignore` and `.editorconfig` and stops with "A merge conflicted on path /README.md" if they exist:
+   ```bash
+   for f in README.md .gitignore .editorconfig; do [ -f "$f" ] && mv "$f" "$f.pre-ng"; done
+   ```
+3. **Create the app without prompts.** The CLI asks about analytics, AI tools and more; without a terminal the questions hang or fail, so switch them all off. Name the app in kebab-case after the repo (`ChinaBoxSPA` → `china-box-spa`):
+   ```bash
+   export NG_CLI_ANALYTICS=false
+   npx -y @angular/cli@latest new <app-name> --directory . --style=css --routing --ssr=false --skip-git --skip-install --interactive=false --defaults
+   ```
+4. **Install with a long timeout.** `npm install` can take several minutes. Run it as its own Bash call with `timeout: 600000`; with the default timeout it is killed halfway:
+   ```bash
+   npm install
+   npm install tailwindcss @tailwindcss/postcss postcss               # always
+   npm install primeng @primeuix/themes @angular/cdk tailwindcss-primeui   # only when a PrimeNG component is used
+   ```
+5. **Merge the files back.** Keep the repo's own `README.md` (rewrite it if the task asks for one), append the lines of `.gitignore.pre-ng` that Angular's `.gitignore` lacks, then delete the `*.pre-ng` files.
+6. **Set up styling** from `references/angular-templates.md`: `.postcssrc.json`, `src/styles.css`, and `providePrimeNG` only if PrimeNG was installed.
+7. **Prove it works:** `npx ng build` and `npx ng test --watch=false` pass. Commit `package-lock.json`.
+
+HTTPS for the dev server (needed only when the app calls an API with a refresh cookie) is in the `dotnet-new-solution` skill, section 5.
+
 ## Commands
 
 ```bash
-# one-time setup in a new app
-npm install primeng @primeuix/themes @angular/cdk tailwindcss @tailwindcss/postcss postcss tailwindcss-primeui
-
 npm ci
 npx ng build
 npx ng test --watch=false
