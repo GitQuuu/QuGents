@@ -48,8 +48,16 @@ src/
 
 - Standalone (default). Do not set `standalone: true` explicitly in v19+.
 - Change detection: leave the default (OnPush in v22). Never opt into `Eager` for new code.
-- Dependencies with `inject()`, not constructor parameters.
-- Order: injected dependencies, inputs/outputs/queries, state signals, computed, methods.
+- **Constructor injection, as in .NET.** Components, services, directives and pipes get their dependencies as `private readonly` constructor parameters, not with `inject()`:
+  ```ts
+  constructor(
+    private readonly auth: AuthStore,
+    private readonly router: Router,
+  ) {}
+  ```
+  An `InjectionToken` uses `@Inject(API_URL) private readonly apiUrl: string`. Field initializers may use the injected dependencies because `tsconfig.json` has `"useDefineForClassFields": false` (set it when it is missing). `inject()` is used **only** where there is no constructor: functional guards, resolvers and interceptors (`CanActivateFn`, `HttpInterceptorFn`) and `provideAppInitializer`. Tests keep `TestBed.inject()`. If ESLint is configured, turn off `@angular-eslint/prefer-inject`.
+  This is the product owner's choice and wins over "follow the project": in a project that still uses `inject()` in classes, new classes use constructor injection, and a class you change is converted completely (no mix inside one class).
+- Order: inputs/outputs/queries, state signals, computed, constructor, methods.
 - `readonly` on `input()`, `output()`, `model()` and queries. `protected` on members used only by the template.
 - Templates: built-in control flow (`@if`, `@for (item of items(); track item.id)`, `@switch`, `@defer`). `[class.x]`/`[style.x]`, not `NgClass`/`NgStyle`. Keep expressions simple; move logic into `computed`.
 - Event handlers named for the action (`saveProduct()`), not the trigger (`onClick()`).
@@ -140,8 +148,9 @@ A Web task that bootstraps the app ("set up the Angular project") starts in a re
    npm install primeng @primeuix/themes @angular/cdk tailwindcss-primeui   # only when a PrimeNG component is used
    ```
 5. **Merge the files back.** Keep the repo's own `README.md` (rewrite it if the task asks for one), append the lines of `.gitignore.pre-ng` that Angular's `.gitignore` lacks, then delete the `*.pre-ng` files.
-6. **Set up styling** from `references/angular-templates.md`: `.postcssrc.json`, `src/styles.css`, and `providePrimeNG` only if PrimeNG was installed.
-7. **Prove it works:** `npx ng build` and `npx ng test --watch=false` pass. Commit `package-lock.json`.
+6. **Constructor injection:** add `"useDefineForClassFields": false` to `compilerOptions` in `tsconfig.json` (see Components). If `ng lint` is added later, turn off `@angular-eslint/prefer-inject`.
+7. **Set up styling** from `references/angular-templates.md`: `.postcssrc.json`, `src/styles.css`, and `providePrimeNG` only if PrimeNG was installed.
+8. **Prove it works:** `npx ng build` and `npx ng test --watch=false` pass. Commit `package-lock.json`.
 
 HTTPS for the dev server (needed only when the app calls an API with a refresh cookie) is in the `dotnet-new-solution` skill, section 5.
 

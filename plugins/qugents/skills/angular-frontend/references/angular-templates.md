@@ -160,7 +160,7 @@ Matches the `dotnet-identity-jwt` skill: access token in the JSON body (kept in 
 
 ```ts
 import { HttpClient } from '@angular/common/http';
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { Injectable, computed, signal } from '@angular/core';
 import { Observable, catchError, finalize, map, shareReplay, throwError } from 'rxjs';
 import { apiUrl } from '../http/api-url';
 
@@ -171,7 +171,6 @@ interface AccessTokenResponse {
 
 @Injectable({ providedIn: 'root' })
 export class AuthStore {
-  private readonly http = inject(HttpClient);
   private readonly token = signal<string | null>(null);
   private refreshInFlight: Observable<string> | null = null;
 
@@ -180,6 +179,8 @@ export class AuthStore {
   private readonly claims = computed(() => decodeClaims(this.token()));
   readonly userId = computed(() => (this.claims()?.['sub'] as string | undefined) ?? null);
   readonly roles = computed(() => toArray(this.claims()?.['role']));
+
+  constructor(private readonly http: HttpClient) {}
 
   hasRole(role: string): boolean {
     return this.roles().includes(role);
@@ -246,6 +247,7 @@ import { AuthStore } from './auth-store';
 const withToken = (req: HttpRequest<unknown>, token: string | null) =>
   token ? req.clone({ setHeaders: { Authorization: `Bearer ${token}` } }) : req;
 
+// A function has no constructor, so inject() is the exception here (same for guards and provideAppInitializer).
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const auth = inject(AuthStore);
   const isAuthCall = req.url.includes('/auth/'); // login/refresh/logout: never retry with a refresh
@@ -371,15 +373,16 @@ export interface JobAccepted {
 
 ```ts
 import { HttpClient } from '@angular/common/http';
-import { Injectable, inject } from '@angular/core';
+import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { apiUrl } from '../../core/http/api-url';
 import { EditProductRequest, JobAccepted, ProductDto } from './product';
 
 @Injectable({ providedIn: 'root' })
 export class ProductsApi {
-  private readonly http = inject(HttpClient);
   private readonly baseUrl = apiUrl('products');
+
+  constructor(private readonly http: HttpClient) {}
 
   /** For httpResource in a component: `httpResource<ProductDto[]>(() => api.listUrl(page()))`. */
   listUrl(page: number): string {
@@ -431,7 +434,7 @@ In `app.routes.ts`: `{ path: 'products', loadChildren: () => import('./features/
 `src/app/features/products/product-list/product-list.ts`
 
 ```ts
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, signal } from '@angular/core';
 import { httpResource } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
@@ -449,13 +452,15 @@ import { ProductDto } from '../product';
   templateUrl: './product-list.html',
 })
 export class ProductList {
-  private readonly api = inject(ProductsApi);
-  private readonly messages = inject(MessageService);
-  private readonly confirmation = inject(ConfirmationService);
-
   protected readonly page = signal(1);
   protected readonly products = httpResource<ProductDto[]>(() => this.api.listUrl(this.page()));
   protected readonly productList = computed(() => this.products.value() ?? []);
+
+  constructor(
+    private readonly api: ProductsApi,
+    private readonly messages: MessageService,
+    private readonly confirmation: ConfirmationService,
+  ) {}
 
   protected showNextPage(): void {
     this.page.update((p) => p + 1);
@@ -564,7 +569,7 @@ export class ProductCard {
 `src/app/features/products/product-edit/product-edit.ts`
 
 ```ts
-import { Component, inject, input, signal } from '@angular/core';
+import { Component, input, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { form, FormField, maxLength, min, required } from '@angular/forms/signals';
 import { firstValueFrom } from 'rxjs';
@@ -582,10 +587,6 @@ import { EditProductRequest } from '../product';
   templateUrl: './product-edit.html',
 })
 export class ProductEdit {
-  private readonly api = inject(ProductsApi);
-  private readonly router = inject(Router);
-  private readonly messages = inject(MessageService);
-
   readonly id = input.required<string>(); // route param via withComponentInputBinding()
 
   protected readonly model = signal<EditProductRequest>({ name: '', price: 0 });
@@ -595,6 +596,12 @@ export class ProductEdit {
     min(p.price, 0);
   });
   protected readonly saving = signal(false);
+
+  constructor(
+    private readonly api: ProductsApi,
+    private readonly router: Router,
+    private readonly messages: MessageService,
+  ) {}
 
   protected async saveProduct(): Promise<void> {
     if (this.productForm().invalid()) return;
