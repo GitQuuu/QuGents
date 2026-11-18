@@ -30,7 +30,7 @@ Every finding needs a concrete exploit scenario ("an authenticated user calls `P
 | **API6 Unrestricted access to sensitive business flows** | Flows that can be abused in bulk (registration, invitations, connection tests, job starts) have rate limits or approval |
 | **API7 Server-side request forgery** | A URL or host that comes from a user (an organization URL, a repository) is parsed and checked against an allow-list (e.g. `dev.azure.com`, `github.com`, `api.github.com`), `https` only, no redirects followed to other hosts, never to localhost, private or link-local addresses |
 | **API8 Security misconfiguration** | See **Configuration hardening** |
-| **API9 Improper inventory management** | Every endpoint is versioned (`Controllers/V<n>`); no debug, test or sample endpoints outside Development; Swagger and the Hangfire dashboard are not public in production |
+| **API9 Improper inventory management** | Every endpoint is versioned (`Controllers/V<n>`); no debug, test or sample endpoints outside Development; Swagger UI and the OpenAPI document are open only in Development; elsewhere they sit behind the docs login (HTTP Basic with `ApiDocs__Username`/`ApiDocs__Password` from configuration, HTTPS, constant-time comparison, password of 16+ random characters) or are not served when it is not configured. The Hangfire dashboard is not public in production |
 | **API10 Unsafe consumption of APIs** | Responses from external APIs are validated before use, errors from them are mapped (not passed through raw), tokens for them are never logged |
 
 ## Configuration hardening (API)

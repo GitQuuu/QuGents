@@ -141,12 +141,12 @@ Give the frontend repo its own `CLAUDE.md` (stack, commands `npx ng serve` / `np
 ## 6. Done when
 
 - `dotnet build` has no warnings (warnings are errors via `Directory.Build.props`) and `dotnet test` is green.
-- `dotnet run` (from `src/Shop.Api`) listens on **https://localhost:5001**; `app.db` sits in `src/Shop.Api` and is git-ignored; `https://localhost:5001/openapi/v1.json` and `https://localhost:5001/swagger` load.
+- `dotnet run` (from `src/Shop.Api`) listens on **https://localhost:5001**; `app.db` sits in `src/Shop.Api` and is git-ignored; `https://localhost:5001/openapi/v1.json` and `https://localhost:5001/swagger` load without a login (outside Development they ask for the `ApiDocs` login).
 - The `Shop.Api.http` requests work in order: register → login (cookie set, access token returned) → a protected endpoint with the token → refresh → logout.
 - In the frontend repo, `npx ng build` and `npx ng test --watch=false` pass, and `npx ng serve` runs on **https://localhost:4200** and talks to the API on https://localhost:5001.
 - Dev values exist only in `appsettings.Development.json` with the `// DEV ONLY` comment; `appsettings.json` has empty `SigningKey` and connection string.
 
-**Before production** (not part of the bootstrap, but say it in the hand-off): generate a new signing key and set `Jwt__SigningKey`, `ConnectionStrings__Default` and `Cors__Origins` through environment variables or a vault. The dev key in the repo must never be used outside development.
+**Before production** (not part of the bootstrap, but say it in the hand-off): generate a new signing key and set `Jwt__SigningKey`, `ConnectionStrings__Default` and `Cors__Origins` through environment variables or a vault, plus `ApiDocs__Username` and a random `ApiDocs__Password` (16+ characters) if the Swagger UI should be reachable there (browser login popup); without them the docs are off. The dev key in the repo must never be used outside development.
 
 ## 7. Branches and CI/CD
 

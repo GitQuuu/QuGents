@@ -504,7 +504,7 @@ Both repos:
 - Repo variable `API_PROJECT` (e.g. `Shop.Api`)
 - `azure`, per environment: secrets `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID` (an Entra app registration with a federated credential for `repo:<owner>/<repo>:environment:<env>`); variable `AZURE_WEBAPP_NAME`
 - `monsterasp`, per environment: secrets `MONSTERASP_API_SERVER`, `MONSTERASP_API_SITE`, `MONSTERASP_API_USERNAME`, `MONSTERASP_API_PASSWORD` (from the API site's *Visual Studio access* card, Web Deploy enabled)
-- App settings per environment (`Jwt__SigningKey`, `ConnectionStrings__Default`, `Cors__Origins__0` = the frontend's URL in that environment) go in the host's configuration (App Service → Environment variables, MonsterASP control panel), never in the repo or workflow files.
+- App settings per environment (`Jwt__SigningKey`, `ConnectionStrings__Default`, `Cors__Origins__0` = the frontend's URL in that environment, `ApiDocs__Username` + `ApiDocs__Password` for the Swagger login) go in the host's configuration (App Service → Environment variables, MonsterASP control panel), never in the repo or workflow files.
 
 **Frontend repo** (`GitQuuu/Shop-web`):
 - Repo variable `WEB_DIST` (e.g. `dist/shop-web/browser`)

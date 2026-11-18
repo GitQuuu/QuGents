@@ -51,9 +51,10 @@ builder.Services.AddRateLimiterExtension();   // "default" and "auth" policies
 var app = builder.Build();
 
 app.UseExceptionHandler();      // ProblemDetails for unhandled exceptions
-app.UseOpenApiExtension();      // Development only
-app.UseSwaggerUIExtension();    // Development only, /swagger
 app.UseHttpsRedirection();
+app.UseApiDocsLoginExtension(); // browser login (HTTP Basic) on /swagger and /openapi outside Development
+app.UseOpenApiExtension();      // /openapi/v1.json: open in Development, behind the docs login elsewhere
+app.UseSwaggerUIExtension();    // /swagger: same rule
 app.UseCorsExtension();
 app.UseAuthentication();
 app.UseAuthorization();
@@ -126,8 +127,30 @@ public static class ApiVersioningExtensions
 
 ### `src/Shop.Api/Extensions/OpenApiExtensions.cs`
 
+API docs (OpenAPI document + Swagger UI) run in **every environment**:
+- **Development:** open, no login.
+- **Other environments:** behind a login using the browser's built-in username/password popup (HTTP Basic, `WWW-Authenticate: Basic`). The credentials are `ApiDocs__Username` and `ApiDocs__Password`, set in the host's configuration and never in the repo.
+- **Not configured:** without the credentials the docs are not served at all (fail closed).
+
+Basic sends the password with every request, so the login comes **after** `UseHttpsRedirection`. The password must be long and random (at least 16 characters; the app refuses to start with a shorter one), which makes guessing impractical without a rate limit. The login is independent of Identity/JWT; app users cannot open the docs with their account.
+
 ```csharp
+using System.Security.Cryptography;
+using System.Text;
+
 namespace Shop.Api.Extensions;
+
+/// <summary>Login for the API docs outside Development. Set via ApiDocs__Username / ApiDocs__Password, never in the repo.</summary>
+public sealed class ApiDocsOptions
+{
+    public const string Section = "ApiDocs";
+    public const int MinPasswordLength = 16;
+
+    public string Username { get; init; } = "";
+    public string Password { get; init; } = "";
+
+    public bool IsConfigured => Username.Length > 0 && Password.Length > 0;
+}
 
 public static class OpenApiExtensions
 {
@@ -140,11 +163,49 @@ public static class OpenApiExtensions
         return services;
     }
 
-    public static WebApplication UseOpenApiExtension(this WebApplication app)
+    /// <summary>
+    /// Browser login (HTTP Basic) in front of /swagger and /openapi outside Development.
+    /// Call after UseHttpsRedirection and before UseOpenApiExtension / UseSwaggerUIExtension.
+    /// </summary>
+    public static WebApplication UseApiDocsLoginExtension(this WebApplication app)
     {
         if (app.Environment.IsDevelopment())
         {
-            app.MapOpenApi();
+            return app;
+        }
+
+        var options = GetOptions(app);
+        if (!options.IsConfigured)
+        {
+            return app; // docs are not mapped at all, see DocsEnabled
+        }
+
+        if (options.Password.Length < ApiDocsOptions.MinPasswordLength)
+        {
+            throw new InvalidOperationException(
+                $"ApiDocs:Password must be at least {ApiDocsOptions.MinPasswordLength} characters.");
+        }
+
+        app.UseWhen(context => IsDocsPath(context.Request.Path), docs => docs.Use(async (context, next) =>
+        {
+            if (IsAuthorized(context.Request.Headers.Authorization, options))
+            {
+                await next(context);
+                return;
+            }
+
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            context.Response.Headers.WWWAuthenticate = "Basic realm=\"API docs\", charset=\"UTF-8\"";
+        }));
+
+        return app;
+    }
+
+    public static WebApplication UseOpenApiExtension(this WebApplication app)
+    {
+        if (DocsEnabled(app))
+        {
+            app.MapOpenApi().AllowAnonymous(); // JWT does not apply here; the docs login protects it
         }
 
         return app;
@@ -152,15 +213,60 @@ public static class OpenApiExtensions
 
     public static WebApplication UseSwaggerUIExtension(this WebApplication app)
     {
-        if (app.Environment.IsDevelopment())
+        if (DocsEnabled(app))
         {
             app.UseSwaggerUI(o => o.SwaggerEndpoint(DocumentPath, "Shop API v1"));
         }
 
         return app;
     }
+
+    private static bool DocsEnabled(WebApplication app) =>
+        app.Environment.IsDevelopment() || GetOptions(app).IsConfigured;
+
+    private static ApiDocsOptions GetOptions(WebApplication app) =>
+        app.Configuration.GetSection(ApiDocsOptions.Section).Get<ApiDocsOptions>() ?? new ApiDocsOptions();
+
+    private static bool IsDocsPath(PathString path) =>
+        path.StartsWithSegments("/swagger") || path.StartsWithSegments("/openapi");
+
+    private static bool IsAuthorized(string? header, ApiDocsOptions options)
+    {
+        const string prefix = "Basic ";
+        if (header is null || !header.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        string credentials;
+        try
+        {
+            credentials = Encoding.UTF8.GetString(Convert.FromBase64String(header[prefix.Length..].Trim()));
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
+
+        var separator = credentials.IndexOf(':');
+        if (separator < 0)
+        {
+            return false;
+        }
+
+        // '&' (not '&&') so a wrong username costs as much time as a wrong password
+        return FixedTimeEquals(credentials[..separator], options.Username)
+             & FixedTimeEquals(credentials[(separator + 1)..], options.Password);
+    }
+
+    private static bool FixedTimeEquals(string a, string b) =>
+        CryptographicOperations.FixedTimeEquals(
+            SHA256.HashData(Encoding.UTF8.GetBytes(a)),
+            SHA256.HashData(Encoding.UTF8.GetBytes(b)));
 }
 ```
+
+Tests (API behaviour, `WebApplicationFactory` with environment `Production` and test credentials): `/swagger` without credentials → 401 with a `WWW-Authenticate: Basic` header; wrong password → 401; right credentials → 200 for `/swagger/index.html` and `/openapi/v1.json`; without `ApiDocs` settings → 404; Development → 200 without credentials.
 
 ### `src/Shop.Api/Extensions/CorsExtensions.cs`
 
@@ -262,7 +368,8 @@ ASP.NET Core's JSON configuration accepts `//` comments, so the files carry the 
 {
   "Logging": { "LogLevel": { "Default": "Information", "Microsoft.AspNetCore": "Warning" } },
   "AllowedHosts": "*",
-  // PRODUCTION: set ConnectionStrings__Default, Jwt__SigningKey and Cors__Origins via environment variables or a vault.
+  // PRODUCTION: set ConnectionStrings__Default, Jwt__SigningKey, Cors__Origins and ApiDocs__Username/ApiDocs__Password
+  // via environment variables or a vault. Without ApiDocs the Swagger UI and OpenAPI document are off.
   "ConnectionStrings": { "Default": "" },
   "Jwt": {
     "Issuer": "https://localhost:5001",
@@ -271,7 +378,8 @@ ASP.NET Core's JSON configuration accepts `//` comments, so the files carry the 
     "AccessTokenMinutes": 15,
     "RefreshTokenDays": 14
   },
-  "Cors": { "Origins": [] }
+  "Cors": { "Origins": [] },
+  "ApiDocs": { "Username": "", "Password": "" }
 }
 ```
 
